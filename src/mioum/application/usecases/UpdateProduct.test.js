@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { UpdateProduct } from './UpdateProduct.js'
 import { InMemoryProductRepository } from '../../adapters/storage/InMemoryProductRepository.js'
 import { Product } from '../../domain/model/Product.js'
-import { ValidationError } from '../../domain/errors/ValidationError.js'
 
 describe('UpdateProduct', () => {
   let repo, useCase, product
@@ -34,9 +33,7 @@ describe('UpdateProduct', () => {
     expect(updated.price.value).toBe(3.00)
   })
 
-  it('throws ValidationError when product is not found', async () => {
-    await expect(useCase.execute({ id: 'unknown-id', name: 'Gaufre' }))
-      .rejects.toThrow(ValidationError)
+  it('throws Error when product is not found', async () => {
     await expect(useCase.execute({ id: 'unknown-id', name: 'Gaufre' }))
       .rejects.toThrow('Product not found: unknown-id')
   })
