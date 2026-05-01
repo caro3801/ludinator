@@ -40,4 +40,12 @@ describe('CancelTicket', () => {
       useCase.execute({ ticketId: 'nonexistent' })
     ).rejects.toThrow('Ticket not found')
   })
+
+  it('throws ValidationError when ticket is already cancelled', async () => {
+    const ticket = await openTicket.execute()
+    await useCase.execute({ ticketId: ticket.id })
+    await expect(
+      useCase.execute({ ticketId: ticket.id })
+    ).rejects.toThrow('Ticket is not open')
+  })
 })

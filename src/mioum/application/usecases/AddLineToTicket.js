@@ -1,5 +1,3 @@
-import { ValidationError } from '../../domain/errors/ValidationError.js'
-
 export class AddLineToTicket {
   #ticketRepo
   #productRepo

@@ -48,4 +48,11 @@ describe('RemoveLineFromTicket', () => {
       useCase.execute({ ticketId: 'nonexistent', lineId: 'whatever' })
     ).rejects.toThrow('Ticket not found')
   })
+
+  it('silently no-ops when lineId does not exist on the ticket', async () => {
+    const ticket = await openTicket.execute()
+    await useCase.execute({ ticketId: ticket.id, lineId: 'nonexistent-line' })
+    const saved = await ticketRepo.findById(ticket.id)
+    expect(saved.lines).toHaveLength(0)
+  })
 })
