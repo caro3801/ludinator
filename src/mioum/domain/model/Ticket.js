@@ -1,5 +1,7 @@
 import { ValidationError } from '../errors/ValidationError.js'
 import { generateId } from '../../../shared/generateId.js'
+import { PaymentMethod } from './PaymentMethod.js'
+import { Price } from './Price.js'
 
 class TicketLine {
   #id
@@ -38,11 +40,9 @@ class TicketLine {
   }
 
   static create(productId, productName, unitPrice, quantity) {
+    Price.create(unitPrice)
     if (!Number.isInteger(quantity) || quantity < 1) {
       throw new ValidationError('quantity must be a positive integer')
-    }
-    if (unitPrice < 0) {
-      throw new ValidationError('unitPrice must be non-negative')
     }
     return new TicketLine(generateId(), productId, productName, unitPrice, quantity)
   }
@@ -83,11 +83,11 @@ export class Ticket {
     this.#lines = this.#lines.filter(l => l.id !== lineId)
   }
 
-  close(paymentMethod = null) {
+  close(rawPaymentMethod = null) {
     if (!this.isOpen) throw new ValidationError('Ticket is not open')
     if (this.#lines.length === 0) throw new ValidationError('Ticket has no lines')
     this.#status = 'closed'
-    this.#paymentMethod = paymentMethod
+    this.#paymentMethod = rawPaymentMethod !== null ? new PaymentMethod(rawPaymentMethod).value : null
     this.#closedAt = Date.now()
   }
 

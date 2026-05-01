@@ -63,6 +63,15 @@ describe('Ticket', () => {
       expect(ticket.lines).toHaveLength(1)
     })
 
+    it('total reflects only the remaining line after removing one of two', () => {
+      const ticket = Ticket.create()
+      const line1 = ticket.addLine('prod-1', 'Crêpe', 2.50, 2)   // 5.00
+      ticket.addLine('prod-2', 'Jus', 1.50, 1)                    // 1.50
+      ticket.removeLine(line1.id)
+      expect(ticket.lines).toHaveLength(1)
+      expect(ticket.total).toBeCloseTo(1.50, 10)
+    })
+
     it('throws ValidationError when ticket is closed', () => {
       const ticket = Ticket.create()
       const line = ticket.addLine('prod-1', 'Crêpe', 2.50, 1)
@@ -99,6 +108,12 @@ describe('Ticket', () => {
       expect(() => ticket.close('cash')).toThrow(ValidationError)
       expect(() => ticket.close('cash')).toThrow('Ticket is not open')
     })
+
+    it('throws ValidationError when paymentMethod is invalid', () => {
+      const ticket = Ticket.create()
+      ticket.addLine('prod-1', 'Crêpe', 2.50, 1)
+      expect(() => ticket.close('invalid-method')).toThrow(ValidationError)
+    })
   })
 
   describe('cancel', () => {
@@ -113,6 +128,13 @@ describe('Ticket', () => {
       const ticket = Ticket.create()
       ticket.addLine('prod-1', 'Crêpe', 2.50, 1)
       ticket.close('cash')
+      expect(() => ticket.cancel()).toThrow(ValidationError)
+      expect(() => ticket.cancel()).toThrow('Ticket is not open')
+    })
+
+    it('throws ValidationError when ticket is already cancelled', () => {
+      const ticket = Ticket.create()
+      ticket.cancel()
       expect(() => ticket.cancel()).toThrow(ValidationError)
       expect(() => ticket.cancel()).toThrow('Ticket is not open')
     })
@@ -182,6 +204,16 @@ describe('TicketLine (via Ticket.addLine)', () => {
   it('throws ValidationError when unitPrice is negative', () => {
     const ticket = Ticket.create()
     expect(() => ticket.addLine('prod-1', 'Crêpe', -1, 1)).toThrow(ValidationError)
+  })
+
+  it('throws ValidationError when unitPrice is NaN', () => {
+    const ticket = Ticket.create()
+    expect(() => ticket.addLine('prod-1', 'Crêpe', NaN, 1)).toThrow(ValidationError)
+  })
+
+  it('throws ValidationError when unitPrice is a string', () => {
+    const ticket = Ticket.create()
+    expect(() => ticket.addLine('prod-1', 'Crêpe', 'abc', 1)).toThrow(ValidationError)
   })
 
   it('has a non-empty id string', () => {
