@@ -46,6 +46,19 @@ describe('Product', () => {
       const product = Product.create('Crêpe', 2.50)
       expect(() => product.update({ name: '', price: 0 })).toThrow(ValidationError)
     })
+
+    it('updates both name and price when both provided', () => {
+      const product = Product.create('Crêpe', 2.50)
+      product.update({ name: 'Galette', price: 3.00 })
+      expect(product.name.value).toBe('Galette')
+      expect(product.price.value).toBe(3.00)
+    })
+
+    it('does not mutate name when price update fails', () => {
+      const product = Product.create('Crêpe', 2.50)
+      expect(() => product.update({ name: 'Galette', price: -1 })).toThrow(ValidationError)
+      expect(product.name.value).toBe('Crêpe')
+    })
   })
 
   describe('toJSON', () => {

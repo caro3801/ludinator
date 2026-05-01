@@ -18,8 +18,10 @@ export class Product {
   get price() { return this.#price }
 
   update({ name, price } = {}) {
-    if (name !== undefined) this.#name = new ProductName(name)
-    if (price !== undefined) this.#price = Price.create(price)
+    const newName = name !== undefined ? new ProductName(name) : this.#name
+    const newPrice = price !== undefined ? Price.create(price) : this.#price
+    this.#name = newName
+    this.#price = newPrice
   }
 
   toJSON() {
