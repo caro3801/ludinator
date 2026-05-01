@@ -162,6 +162,33 @@ describe('MioumTicketView', () => {
     expect(events[0].ticketId).toBe(ticket.id)
   })
 
+  it('dispatches line-decrement-requested on decrement click', async () => {
+    const line = makeLine('Café', 1.5, 2)
+    const ticket = makeTicket('open', [line])
+    await el.refresh(ticket, repoWith([]))
+
+    const events = []
+    el.addEventListener('line-decrement-requested', e => events.push(e.detail))
+    el.querySelector('button[data-action="decrement-line"]').click()
+
+    expect(events[0].ticketId).toBe(ticket.id)
+    expect(events[0].lineId).toBe(line.id)
+  })
+
+  it('dispatches line-add-requested on increment click', async () => {
+    const line = makeLine('Café', 1.5, 2)
+    const ticket = makeTicket('open', [line])
+    await el.refresh(ticket, repoWith([]))
+
+    const events = []
+    el.addEventListener('line-add-requested', e => events.push(e.detail))
+    el.querySelector('button[data-action="increment-line"]').click()
+
+    expect(events[0].ticketId).toBe(ticket.id)
+    expect(events[0].productId).toBe(line.productId)
+    expect(events[0].quantity).toBe(1)
+  })
+
   it('shows closed ticket as read-only with status badge', async () => {
     const line = makeLine('Café', 1.5, 2)
     const ticket = makeTicket('closed', [line])

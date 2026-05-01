@@ -25,6 +25,13 @@ class TicketLine {
   get quantity() { return this.#quantity }
   get subtotal() { return this.#unitPrice * this.#quantity }
 
+  withQuantity(quantity) {
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      throw new ValidationError('quantity must be a positive integer')
+    }
+    return new TicketLine(this.#id, this.#productId, this.#productName, this.#unitPrice, quantity)
+  }
+
   toJSON() {
     return {
       id: this.#id,
@@ -87,6 +94,17 @@ export class Ticket {
   removeLine(lineId) {
     if (!this.isOpen) throw new ValidationError('Ticket is not open')
     this.#lines = this.#lines.filter(l => l.id !== lineId)
+  }
+
+  decrementLine(lineId) {
+    if (!this.isOpen) throw new ValidationError('Ticket is not open')
+    const line = this.#lines.find(l => l.id === lineId)
+    if (!line) return
+    if (line.quantity === 1) {
+      this.#lines = this.#lines.filter(l => l.id !== lineId)
+    } else {
+      this.#lines = this.#lines.map(l => l.id === lineId ? l.withQuantity(l.quantity - 1) : l)
+    }
   }
 
   close(rawPaymentMethod = null) {

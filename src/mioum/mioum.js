@@ -8,6 +8,7 @@ import { AddLineToTicket } from './application/usecases/AddLineToTicket.js'
 import { RemoveLineFromTicket } from './application/usecases/RemoveLineFromTicket.js'
 import { CloseTicket } from './application/usecases/CloseTicket.js'
 import { CancelTicket } from './application/usecases/CancelTicket.js'
+import { DecrementLineQuantity } from './application/usecases/DecrementLineQuantity.js'
 import { GetSalesStats } from './application/usecases/GetSalesStats.js'
 import { ReopenTicket } from './application/usecases/ReopenTicket.js'
 import './adapters/ui/MioumProductForm.js'
@@ -27,6 +28,7 @@ const addLineToTicket = new AddLineToTicket(ticketRepo, productRepo)
 const removeLineFromTicket = new RemoveLineFromTicket(ticketRepo)
 const closeTicket = new CloseTicket(ticketRepo)
 const cancelTicket = new CancelTicket(ticketRepo)
+const decrementLineQuantity = new DecrementLineQuantity(ticketRepo)
 const getSalesStats = new GetSalesStats(ticketRepo)
 const reopenTicket = new ReopenTicket(ticketRepo)
 
@@ -98,6 +100,14 @@ document.addEventListener('line-add-requested', async e => {
 document.addEventListener('line-remove-requested', async e => {
   try {
     await removeLineFromTicket.execute(e.detail)
+    currentTicket = await ticketRepo.findById(e.detail.ticketId)
+    refreshTicket()
+  } catch (err) { dispatchError(err.message) }
+})
+
+document.addEventListener('line-decrement-requested', async e => {
+  try {
+    await decrementLineQuantity.execute(e.detail)
     currentTicket = await ticketRepo.findById(e.detail.ticketId)
     refreshTicket()
   } catch (err) { dispatchError(err.message) }

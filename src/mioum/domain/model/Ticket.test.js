@@ -68,6 +68,41 @@ describe('Ticket', () => {
     })
   })
 
+  describe('decrementLine', () => {
+    it('decrements quantity by 1 when quantity > 1, keeping the same line id', () => {
+      const ticket = Ticket.create()
+      const line = ticket.addLine('prod-1', 'Crêpe', 2.50, 3)
+      const originalId = line.id
+      ticket.decrementLine(line.id)
+      expect(ticket.lines).toHaveLength(1)
+      expect(ticket.lines[0].id).toBe(originalId)
+      expect(ticket.lines[0].quantity).toBe(2)
+      expect(ticket.total).toBeCloseTo(5.00, 10)
+    })
+
+    it('removes the line when quantity is 1', () => {
+      const ticket = Ticket.create()
+      const line = ticket.addLine('prod-1', 'Crêpe', 2.50, 1)
+      ticket.decrementLine(line.id)
+      expect(ticket.lines).toHaveLength(0)
+      expect(ticket.total).toBe(0)
+    })
+
+    it('silently ignores a non-existent line id', () => {
+      const ticket = Ticket.create()
+      ticket.addLine('prod-1', 'Crêpe', 2.50, 2)
+      expect(() => ticket.decrementLine('nonexistent')).not.toThrow()
+      expect(ticket.lines).toHaveLength(1)
+    })
+
+    it('throws ValidationError when ticket is not open', () => {
+      const ticket = Ticket.create()
+      const line = ticket.addLine('prod-1', 'Crêpe', 2.50, 1)
+      ticket.close('cash')
+      expect(() => ticket.decrementLine(line.id)).toThrow(ValidationError)
+    })
+  })
+
   describe('removeLine', () => {
     it('removes an existing line by id', () => {
       const ticket = Ticket.create()

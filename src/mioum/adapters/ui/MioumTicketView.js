@@ -17,6 +17,18 @@ export class MioumTicketView extends HTMLElement {
           bubbles: true,
         }))
       }
+      if (action === 'increment-line') {
+        this.dispatchEvent(new CustomEvent('line-add-requested', {
+          detail: { ticketId, productId, quantity: 1 },
+          bubbles: true,
+        }))
+      }
+      if (action === 'decrement-line') {
+        this.dispatchEvent(new CustomEvent('line-decrement-requested', {
+          detail: { ticketId, lineId },
+          bubbles: true,
+        }))
+      }
       if (action === 'close-cash') {
         this.dispatchEvent(new CustomEvent('ticket-close-requested', {
           detail: { ticketId, paymentMethod: 'cash' },
@@ -86,16 +98,18 @@ export class MioumTicketView extends HTMLElement {
                 : `<ul class="list-unstyled mb-0">
                     ${lines.map(l => `
                       <li class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="me-1">
-                          <span class="fw-semibold">${l.productName}</span>
-                          <span class="text-muted small">× ${l.quantity} (${l.unitPrice} €)</span>
-                        </span>
-                        <span class="d-flex align-items-center gap-1">
-                          <span>${l.subtotal} €</span>
-                          <button class="btn btn-outline-danger btn-sm py-0 px-1"
-                            data-action="remove-line"
+                        <span class="fw-semibold me-1">${l.productName}</span>
+                        <span class="d-flex align-items-center gap-1 ms-auto">
+                          <button class="btn btn-outline-secondary btn-sm py-0 px-2"
+                            data-action="decrement-line"
                             data-ticket-id="${ticket.id}"
-                            data-line-id="${l.id}">✕</button>
+                            data-line-id="${l.id}">−</button>
+                          <span class="mx-1">${l.quantity}</span>
+                          <button class="btn btn-outline-secondary btn-sm py-0 px-2"
+                            data-action="increment-line"
+                            data-ticket-id="${ticket.id}"
+                            data-product-id="${l.productId}">+</button>
+                          <span class="text-muted small ms-1">${l.subtotal.toFixed(2)} €</span>
                         </span>
                       </li>
                     `).join('')}
