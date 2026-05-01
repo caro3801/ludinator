@@ -3,10 +3,10 @@ export class MioumProductList extends HTMLElement {
     this.addEventListener('click', e => {
       const btn = e.target.closest('button[data-action]')
       if (!btn) return
-      const { action, productId, name, price } = btn.dataset
+      const { action, productId, name, price, category } = btn.dataset
       if (action === 'edit-product') {
         this.dispatchEvent(new CustomEvent('product-edit-requested', {
-          detail: { productId, name, price: parseFloat(price) },
+          detail: { productId, name, price: parseFloat(price), category },
           bubbles: true,
         }))
       }
@@ -28,12 +28,14 @@ export class MioumProductList extends HTMLElement {
     this.innerHTML = `<ul class="list-group">${products.map(p => `
       <li class="list-group-item d-flex align-items-center gap-2">
         <span>${p.name.value}</span>
+        <span class="badge bg-secondary ms-1">${p.category}</span>
         <span class="text-muted ms-2">${p.price.value} €</span>
         <button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-auto"
           data-action="edit-product"
           data-product-id="${p.id}"
           data-name="${p.name.value}"
-          data-price="${p.price.value}">✏️</button>
+          data-price="${p.price.value}"
+          data-category="${p.category}">✏️</button>
         <button class="btn btn-outline-danger btn-sm py-0 px-1"
           data-action="delete-product"
           data-product-id="${p.id}">🗑</button>

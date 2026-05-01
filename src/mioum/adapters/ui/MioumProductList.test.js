@@ -2,10 +2,11 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import './MioumProductList.js'
 
-const makeProduct = (name, price) => ({
+const makeProduct = (name, price, category = 'Snacks') => ({
   id: crypto.randomUUID(),
   name: { value: name },
   price: { value: price },
+  category,
 })
 const repoWith = (products) => ({ findAll: async () => products })
 
@@ -39,13 +40,14 @@ describe('MioumProductList', () => {
     expect(el.querySelector('button[data-action="delete-product"]')).not.toBeNull()
   })
 
-  it('edit button carries data-product-id, data-name, data-price', async () => {
-    const product = makeProduct('Café', 1.5)
+  it('edit button carries data-product-id, data-name, data-price, data-category', async () => {
+    const product = makeProduct('Café', 1.5, 'Boissons')
     await el.refresh(repoWith([product]))
     const btn = el.querySelector('button[data-action="edit-product"]')
     expect(btn.dataset.productId).toBe(product.id)
     expect(btn.dataset.name).toBe('Café')
     expect(btn.dataset.price).toBe('1.5')
+    expect(btn.dataset.category).toBe('Boissons')
   })
 
   it('delete button carries data-product-id', async () => {
@@ -55,8 +57,8 @@ describe('MioumProductList', () => {
     expect(btn.dataset.productId).toBe(product.id)
   })
 
-  it('dispatches product-edit-requested with productId, name and price as float', async () => {
-    const product = makeProduct('Café', 1.5)
+  it('dispatches product-edit-requested with productId, name, price as float and category', async () => {
+    const product = makeProduct('Café', 1.5, 'Boissons')
     await el.refresh(repoWith([product]))
 
     const events = []
@@ -66,6 +68,7 @@ describe('MioumProductList', () => {
     expect(events[0].productId).toBe(product.id)
     expect(events[0].name).toBe('Café')
     expect(events[0].price).toBe(1.5)
+    expect(events[0].category).toBe('Boissons')
   })
 
   it('dispatches product-delete-requested with productId', async () => {

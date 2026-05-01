@@ -9,7 +9,7 @@ describe('DeleteProduct', () => {
   beforeEach(async () => {
     repo = new InMemoryProductRepository()
     useCase = new DeleteProduct(repo)
-    product = Product.create('Crêpe', 2.50)
+    product = Product.create('Crêpe', 2.50, 'Snacks')
     await repo.save(product)
   })
 

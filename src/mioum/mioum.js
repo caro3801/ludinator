@@ -66,15 +66,17 @@ document.addEventListener('product-delete-requested', async e => {
 
 document.addEventListener('product-edit-requested', async e => {
   // TODO: replace with inline edit form
-  const { productId, name, price } = e.detail
+  const { productId, name, price, category } = e.detail
   const newName = window.prompt('Nouveau nom du produit :', name)
   if (newName === null) return
+  const newCategory = window.prompt('Catégorie :', category)
+  if (newCategory === null) return
   const newPriceRaw = window.prompt('Nouveau prix (€) :', price)
   if (newPriceRaw === null) return
   const newPrice = parseFloat(newPriceRaw)
-  if (isNaN(newPrice) || newPrice < 0) { dispatchError('Prix invalide.'); return }
+  if (isNaN(newPrice)) { dispatchError('Prix invalide.'); return }
   try {
-    await updateProduct.execute({ id: productId, name: newName, price: newPrice })
+    await updateProduct.execute({ id: productId, name: newName, price: newPrice, category: newCategory })
     refreshProducts()
   } catch (err) { dispatchError(err.message) }
 })

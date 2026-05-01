@@ -10,6 +10,9 @@ export class MioumProductForm extends HTMLElement {
           <input name="name" type="text" class="form-control form-control-sm" placeholder="Nom du produit" required>
         </div>
         <div class="mb-2">
+          <input name="category" type="text" class="form-control form-control-sm" placeholder="Catégorie" required>
+        </div>
+        <div class="mb-2">
           <input name="price" type="number" step="0.01" class="form-control form-control-sm" placeholder="Prix (€)" required>
         </div>
         <button type="submit" class="btn btn-sm btn-primary">Créer</button>
@@ -21,9 +24,10 @@ export class MioumProductForm extends HTMLElement {
   async #onSubmit(e) {
     e.preventDefault()
     const name = this.querySelector('input[name="name"]').value.trim()
+    const category = this.querySelector('input[name="category"]').value.trim()
     const price = parseFloat(this.querySelector('input[name="price"]').value)
     try {
-      const product = await this.#createProductUseCase.execute({ name, price })
+      const product = await this.#createProductUseCase.execute({ name, price, category })
       this.dispatchEvent(new CustomEvent('product-created', { detail: product, bubbles: true }))
       e.target.reset()
     } catch (err) {

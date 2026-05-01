@@ -19,7 +19,7 @@ describe('AddLineToTicket', () => {
 
   it('adds a valid line and returns a TicketLine with updated ticket total', async () => {
     const ticket = await openTicket.execute()
-    const product = Product.create('Crêpe', 2.50)
+    const product = Product.create('Crêpe', 2.50, 'Snacks')
     await productRepo.save(product)
 
     const line = await useCase.execute({ ticketId: ticket.id, productId: product.id, quantity: 3 })
@@ -36,7 +36,7 @@ describe('AddLineToTicket', () => {
   })
 
   it('throws when ticketId is unknown', async () => {
-    const product = Product.create('Crêpe', 2.50)
+    const product = Product.create('Crêpe', 2.50, 'Snacks')
     await productRepo.save(product)
 
     await expect(
@@ -53,7 +53,7 @@ describe('AddLineToTicket', () => {
   })
 
   it('throws ValidationError when adding to a closed ticket', async () => {
-    const product = Product.create('Crêpe', 2.50)
+    const product = Product.create('Crêpe', 2.50, 'Snacks')
     await productRepo.save(product)
     const ticket = await openTicket.execute()
     ticket.addLine(product.id, product.name.value, product.price.value, 1)
@@ -67,7 +67,7 @@ describe('AddLineToTicket', () => {
 
   it('throws ValidationError when quantity < 1', async () => {
     const ticket = await openTicket.execute()
-    const product = Product.create('Crêpe', 2.50)
+    const product = Product.create('Crêpe', 2.50, 'Snacks')
     await productRepo.save(product)
 
     await expect(

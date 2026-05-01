@@ -2,10 +2,11 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import './MioumTicketView.js'
 
-const makeProduct = (name, price) => ({
+const makeProduct = (name, price, category = 'Snacks') => ({
   id: crypto.randomUUID(),
   name: { value: name },
   price: { value: price },
+  category,
 })
 const repoWith = (products) => ({ findAll: async () => products })
 
@@ -178,5 +179,30 @@ describe('MioumTicketView', () => {
     await el.refresh(ticket, repoWith([]))
     expect(el.querySelector('button[data-action="close-cash"]')).toBeNull()
     expect(el.querySelector('[data-status]')).not.toBeNull()
+  })
+
+  it('groups products by category with a category header', async () => {
+    const beer = makeProduct('Bière', 2.5, 'Boissons')
+    const crepe = makeProduct('Crêpe', 2.0, 'Snacks')
+    const ticket = makeTicket('open', [])
+    await el.refresh(ticket, repoWith([crepe, beer]))
+    const text = el.textContent
+    expect(text).toContain('Boissons')
+    expect(text).toContain('Snacks')
+    const boissonsIdx = text.indexOf('Boissons')
+    const snacksIdx = text.indexOf('Snacks')
+    const beerIdx = text.indexOf('Bière')
+    const crepeIdx = text.indexOf('Crêpe')
+    expect(boissonsIdx).toBeLessThan(beerIdx)
+    expect(snacksIdx).toBeLessThan(crepeIdx)
+  })
+
+  it('sorts categories alphabetically — Boissons before Snacks', async () => {
+    const crepe = makeProduct('Crêpe', 2.0, 'Snacks')
+    const beer = makeProduct('Bière', 2.5, 'Boissons')
+    const ticket = makeTicket('open', [])
+    await el.refresh(ticket, repoWith([crepe, beer]))
+    const text = el.textContent
+    expect(text.indexOf('Boissons')).toBeLessThan(text.indexOf('Snacks'))
   })
 })

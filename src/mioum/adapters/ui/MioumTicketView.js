@@ -48,22 +48,35 @@ export class MioumTicketView extends HTMLElement {
 
     if (ticket.isOpen) {
       const products = await productRepo.findAll()
+      const sorted = [...products].sort((a, b) =>
+        a.category.localeCompare(b.category, 'fr') || a.name.value.localeCompare(b.name.value, 'fr')
+      )
+      const byCategory = sorted.reduce((acc, p) => {
+        if (!acc[p.category]) acc[p.category] = []
+        acc[p.category].push(p)
+        return acc
+      }, {})
+      const productGrid = products.length === 0
+        ? '<p class="text-muted">Aucun produit dans le catalogue.</p>'
+        : Object.entries(byCategory).map(([cat, prods]) => `
+            <div class="col-12"><p class="text-muted small fw-semibold mb-1 mt-2 text-uppercase">${cat}</p></div>
+            ${prods.map(p => `
+              <div class="col-6 col-md-4">
+                <button class="btn btn-outline-primary w-100 py-3"
+                  data-action="add-product"
+                  data-product-id="${p.id}"
+                  data-ticket-id="${ticket.id}">
+                  <div class="fw-semibold">${p.name.value}</div>
+                  <div class="text-muted small">${p.price.value.toFixed(2)} €</div>
+                </button>
+              </div>
+            `).join('')}
+          `).join('')
       this.innerHTML = `
         <div class="row g-0" style="min-height: 400px">
           <div class="col-8 border-end p-2">
             <div class="row g-2">
-              ${products.map(p => `
-                <div class="col-6 col-md-4">
-                  <button class="btn btn-outline-primary w-100 py-3"
-                    data-action="add-product"
-                    data-product-id="${p.id}"
-                    data-ticket-id="${ticket.id}">
-                    <div class="fw-semibold">${p.name.value}</div>
-                    <div class="text-muted small">${p.price.value.toFixed(2)} €</div>
-                  </button>
-                </div>
-              `).join('')}
-              ${products.length === 0 ? '<p class="text-muted">Aucun produit dans le catalogue.</p>' : ''}
+              ${productGrid}
             </div>
           </div>
           <div class="col-4 d-flex flex-column p-2">

@@ -7,8 +7,8 @@ export class CreateProduct {
     this.#repo = productRepository
   }
 
-  async execute({ name, price }) {
-    const product = Product.create(name, price)
+  async execute({ name, price, category }) {
+    const product = Product.create(name, price, category)
     await this.#repo.save(product)
     return product
   }

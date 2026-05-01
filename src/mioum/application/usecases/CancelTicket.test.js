@@ -24,7 +24,7 @@ describe('CancelTicket', () => {
 
   it('throws ValidationError when cancelling an already-closed ticket', async () => {
     const ticket = await openTicket.execute()
-    const product = Product.create('Eau', 1.00)
+    const product = Product.create('Eau', 1.00, 'Boissons')
     await productRepo.save(product)
     ticket.addLine(product.id, product.name.value, product.price.value, 1)
     ticket.close('cash')

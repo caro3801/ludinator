@@ -9,14 +9,15 @@ describe('UpdateProduct', () => {
   beforeEach(async () => {
     repo = new InMemoryProductRepository()
     useCase = new UpdateProduct(repo)
-    product = Product.create('Crêpe', 2.50)
+    product = Product.create('Crêpe', 2.50, 'Snacks')
     await repo.save(product)
   })
 
-  it('updates name only — price stays unchanged', async () => {
+  it('updates name only — price and category stay unchanged', async () => {
     const updated = await useCase.execute({ id: product.id, name: 'Gaufre' })
     expect(updated.name.value).toBe('Gaufre')
     expect(updated.price.value).toBe(2.50)
+    expect(updated.category).toBe('Snacks')
     expect((await repo.findById(product.id)).name.value).toBe('Gaufre')
   })
 
@@ -27,10 +28,18 @@ describe('UpdateProduct', () => {
     expect((await repo.findById(product.id)).price.value).toBe(3.00)
   })
 
-  it('updates both name and price', async () => {
-    const updated = await useCase.execute({ id: product.id, name: 'Gaufre', price: 3.00 })
+  it('updates category only — name and price stay unchanged', async () => {
+    const updated = await useCase.execute({ id: product.id, category: 'Boissons' })
+    expect(updated.category).toBe('Boissons')
+    expect(updated.name.value).toBe('Crêpe')
+    expect(updated.price.value).toBe(2.50)
+  })
+
+  it('updates name, price and category', async () => {
+    const updated = await useCase.execute({ id: product.id, name: 'Gaufre', price: 3.00, category: 'Boissons' })
     expect(updated.name.value).toBe('Gaufre')
     expect(updated.price.value).toBe(3.00)
+    expect(updated.category).toBe('Boissons')
   })
 
   it('throws Error when product is not found', async () => {

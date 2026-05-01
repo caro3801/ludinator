@@ -18,7 +18,7 @@ describe('RemoveLineFromTicket', () => {
 
   it('removes an existing line, leaving ticket empty with total 0', async () => {
     const ticket = await openTicket.execute()
-    const product = Product.create('Bière', 3.00)
+    const product = Product.create('Bière', 3.00, 'Boissons')
     await productRepo.save(product)
     const line = ticket.addLine(product.id, product.name.value, product.price.value, 2)
     await ticketRepo.save(ticket)
@@ -32,7 +32,7 @@ describe('RemoveLineFromTicket', () => {
 
   it('throws ValidationError when removing from a closed ticket', async () => {
     const ticket = await openTicket.execute()
-    const product = Product.create('Bière', 3.00)
+    const product = Product.create('Bière', 3.00, 'Boissons')
     await productRepo.save(product)
     const line = ticket.addLine(product.id, product.name.value, product.price.value, 1)
     ticket.close('cash')

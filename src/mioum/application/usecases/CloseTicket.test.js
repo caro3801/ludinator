@@ -18,7 +18,7 @@ describe('CloseTicket', () => {
 
   async function openTicketWithLine() {
     const ticket = await openTicket.execute()
-    const product = Product.create('Café', 1.50)
+    const product = Product.create('Café', 1.50, 'Boissons')
     await productRepo.save(product)
     ticket.addLine(product.id, product.name.value, product.price.value, 1)
     await ticketRepo.save(ticket)
