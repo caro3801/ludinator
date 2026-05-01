@@ -3,16 +3,28 @@ export class MioumTicketView extends HTMLElement {
     this.addEventListener('click', e => {
       const btn = e.target.closest('button[data-action]')
       if (!btn) return
-      const { action, ticketId, lineId } = btn.dataset
+      const { action, ticketId, lineId, productId } = btn.dataset
       if (action === 'remove-line') {
         this.dispatchEvent(new CustomEvent('line-remove-requested', {
           detail: { ticketId, lineId },
           bubbles: true,
         }))
       }
-      if (action === 'close-ticket') {
+      if (action === 'add-product') {
+        this.dispatchEvent(new CustomEvent('line-add-requested', {
+          detail: { ticketId, productId, quantity: 1 },
+          bubbles: true,
+        }))
+      }
+      if (action === 'close-cash') {
         this.dispatchEvent(new CustomEvent('ticket-close-requested', {
-          detail: { ticketId },
+          detail: { ticketId, paymentMethod: 'cash' },
+          bubbles: true,
+        }))
+      }
+      if (action === 'close-card') {
+        this.dispatchEvent(new CustomEvent('ticket-close-requested', {
+          detail: { ticketId, paymentMethod: 'card' },
           bubbles: true,
         }))
       }
@@ -36,64 +48,71 @@ export class MioumTicketView extends HTMLElement {
     if (ticket.isOpen) {
       const products = await productRepo.findAll()
       this.innerHTML = `
-        <div>
-          <table class="table table-sm">
-            <thead>
-              <tr>
-                <th>Produit</th>
-                <th>Qté</th>
-                <th>P.U.</th>
-                <th>Sous-total</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
+        <div class="row g-0" style="min-height: 400px">
+          <div class="col-8 border-end p-2">
+            <div class="row g-2">
+              ${products.map(p => `
+                <div class="col-6 col-md-4">
+                  <button class="btn btn-outline-primary w-100 py-3"
+                    data-action="add-product"
+                    data-product-id="${p.id}"
+                    data-ticket-id="${ticket.id}">
+                    <div class="fw-semibold">${p.name.value}</div>
+                    <div class="text-muted small">${p.price.value.toFixed(2)} €</div>
+                  </button>
+                </div>
+              `).join('')}
+              ${products.length === 0 ? '<p class="text-muted">Aucun produit dans le catalogue.</p>' : ''}
+            </div>
+          </div>
+          <div class="col-4 d-flex flex-column p-2">
+            <div class="flex-grow-1 overflow-auto mb-2">
               ${lines.length === 0
-                ? '<tr><td colspan="5" class="text-muted">Aucune ligne.</td></tr>'
-                : lines.map(l => `
-                  <tr>
-                    <td>${l.productName}</td>
-                    <td>${l.quantity}</td>
-                    <td>${l.unitPrice} €</td>
-                    <td>${l.subtotal} €</td>
-                    <td>
-                      <button class="btn btn-outline-danger btn-sm py-0 px-1"
-                        data-action="remove-line"
-                        data-ticket-id="${ticket.id}"
-                        data-line-id="${l.id}">✕</button>
-                    </td>
-                  </tr>
-                `).join('')}
-            </tbody>
-          </table>
-
-          <form data-form="add-line" class="d-flex gap-2 mb-3">
-            <select name="productId" class="form-select form-select-sm">
-              ${products.map(p => `<option value="${p.id}">${p.name.value} — ${p.price.value} €</option>`).join('')}
-            </select>
-            <input name="quantity" type="number" min="1" value="1" class="form-control form-control-sm" style="width:80px">
-            <button type="submit" class="btn btn-sm btn-success">Ajouter</button>
-          </form>
-
-          <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-primary"
-              data-action="close-ticket"
-              data-ticket-id="${ticket.id}">Encaisser</button>
-            <button class="btn btn-sm btn-outline-danger"
-              data-action="cancel-ticket"
-              data-ticket-id="${ticket.id}">Annuler</button>
+                ? '<p class="text-muted small">Aucune ligne.</p>'
+                : `<ul class="list-unstyled mb-0">
+                    ${lines.map(l => `
+                      <li class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="me-1">
+                          <span class="fw-semibold">${l.productName}</span>
+                          <span class="text-muted small">× ${l.quantity} (${l.unitPrice} €)</span>
+                        </span>
+                        <span class="d-flex align-items-center gap-1">
+                          <span>${l.subtotal} €</span>
+                          <button class="btn btn-outline-danger btn-sm py-0 px-1"
+                            data-action="remove-line"
+                            data-ticket-id="${ticket.id}"
+                            data-line-id="${l.id}">✕</button>
+                        </span>
+                      </li>
+                    `).join('')}
+                  </ul>`
+              }
+            </div>
+            <div class="border-top pt-2">
+              <div class="d-flex justify-content-between fw-bold fs-5 mb-3">
+                <span>Total</span><span>${ticket.total.toFixed(2)} €</span>
+              </div>
+              <div class="d-grid gap-2">
+                <button class="btn btn-success btn-lg"
+                  data-action="close-cash"
+                  data-ticket-id="${ticket.id}">
+                  💵 Espèces
+                </button>
+                <button class="btn btn-primary btn-lg"
+                  data-action="close-card"
+                  data-ticket-id="${ticket.id}">
+                  💳 Carte bleue
+                </button>
+                <button class="btn btn-outline-danger btn-sm"
+                  data-action="cancel-ticket"
+                  data-ticket-id="${ticket.id}">
+                  Annuler le ticket
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       `
-      this.querySelector('form[data-form="add-line"]').addEventListener('submit', e => {
-        e.preventDefault()
-        const productId = this.querySelector('select[name="productId"]').value
-        const quantity = parseInt(this.querySelector('input[name="quantity"]').value, 10)
-        this.dispatchEvent(new CustomEvent('line-add-requested', {
-          detail: { ticketId: ticket.id, productId, quantity },
-          bubbles: true,
-        }))
-      })
     } else {
       const statusLabel = ticket.status === 'closed' ? 'Encaissé' : 'Annulé'
       this.innerHTML = `

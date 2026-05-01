@@ -42,8 +42,16 @@ const refreshStats = () => statsView.refresh(getSalesStats)
 
 const dispatchError = msg => document.dispatchEvent(new CustomEvent('mioum-error', { detail: { message: msg } }))
 
+const initTicket = async () => {
+  try {
+    const openTickets = await ticketRepo.findByStatus('open')
+    currentTicket = openTickets.length > 0 ? openTickets[0] : await openTicket.execute()
+    refreshTicket()
+  } catch (err) { dispatchError(err.message) }
+}
+
 refreshProducts()
-refreshTicket()
+initTicket()
 refreshStats()
 
 document.addEventListener('product-created', () => refreshProducts())
@@ -70,13 +78,6 @@ document.addEventListener('product-edit-requested', async e => {
   } catch (err) { dispatchError(err.message) }
 })
 
-document.getElementById('btn-open-ticket').addEventListener('click', async () => {
-  try {
-    currentTicket = await openTicket.execute()
-    refreshTicket()
-  } catch (err) { dispatchError(err.message) }
-})
-
 document.addEventListener('line-add-requested', async e => {
   try {
     await addLineToTicket.execute(e.detail)
@@ -95,15 +96,17 @@ document.addEventListener('line-remove-requested', async e => {
 
 document.addEventListener('ticket-close-requested', async e => {
   try {
-    currentTicket = await closeTicket.execute(e.detail)
-    refreshTicket()
+    await closeTicket.execute(e.detail)
     refreshStats()
+    currentTicket = await openTicket.execute()
+    refreshTicket()
   } catch (err) { dispatchError(err.message) }
 })
 
 document.addEventListener('ticket-cancel-requested', async e => {
   try {
-    currentTicket = await cancelTicket.execute(e.detail)
+    await cancelTicket.execute(e.detail)
+    currentTicket = await openTicket.execute()
     refreshTicket()
   } catch (err) { dispatchError(err.message) }
 })

@@ -39,7 +39,7 @@ describe('MioumTicketView', () => {
     expect(el.textContent).toContain('Aucun ticket ouvert')
   })
 
-  it('renders lines table for open ticket', async () => {
+  it('renders lines in ticket summary for open ticket', async () => {
     const line = makeLine('Café', 1.5, 2)
     const ticket = makeTicket('open', [line])
     await el.refresh(ticket, repoWith([]))
@@ -48,12 +48,21 @@ describe('MioumTicketView', () => {
     expect(el.textContent).toContain('2')
   })
 
-  it('renders product selector for adding lines', async () => {
+  it('renders product buttons in grid for open ticket', async () => {
+    const product = makeProduct('Café', 1.5)
     const ticket = makeTicket('open', [])
-    await el.refresh(ticket, repoWith([makeProduct('Café', 1.5)]))
-    expect(el.querySelector('select')).not.toBeNull()
-    expect(el.querySelector('option')).not.toBeNull()
-    expect(el.textContent).toContain('Café')
+    await el.refresh(ticket, repoWith([product]))
+    const btn = el.querySelector('button[data-action="add-product"]')
+    expect(btn).not.toBeNull()
+    expect(btn.dataset.productId).toBe(product.id)
+    expect(btn.textContent).toContain('Café')
+    expect(btn.textContent).toContain('1.50')
+  })
+
+  it('shows empty catalog message when no products', async () => {
+    const ticket = makeTicket('open', [])
+    await el.refresh(ticket, repoWith([]))
+    expect(el.textContent).toContain('Aucun produit dans le catalogue.')
   })
 
   it('renders remove button per line with data attributes', async () => {
@@ -66,10 +75,18 @@ describe('MioumTicketView', () => {
     expect(btn.dataset.lineId).toBe(line.id)
   })
 
-  it('renders close button with data-ticket-id', async () => {
+  it('renders close-cash button with data-ticket-id', async () => {
     const ticket = makeTicket('open', [makeLine('Café', 1.5, 1)])
     await el.refresh(ticket, repoWith([]))
-    const btn = el.querySelector('button[data-action="close-ticket"]')
+    const btn = el.querySelector('button[data-action="close-cash"]')
+    expect(btn).not.toBeNull()
+    expect(btn.dataset.ticketId).toBe(ticket.id)
+  })
+
+  it('renders close-card button with data-ticket-id', async () => {
+    const ticket = makeTicket('open', [makeLine('Café', 1.5, 1)])
+    await el.refresh(ticket, repoWith([]))
+    const btn = el.querySelector('button[data-action="close-card"]')
     expect(btn).not.toBeNull()
     expect(btn.dataset.ticketId).toBe(ticket.id)
   })
@@ -82,21 +99,18 @@ describe('MioumTicketView', () => {
     expect(btn.dataset.ticketId).toBe(ticket.id)
   })
 
-  it('dispatches line-add-requested on add form submit', async () => {
+  it('dispatches line-add-requested with quantity 1 when product button clicked', async () => {
     const product = makeProduct('Café', 1.5)
     const ticket = makeTicket('open', [])
     await el.refresh(ticket, repoWith([product]))
 
     const events = []
     el.addEventListener('line-add-requested', e => events.push(e.detail))
-
-    el.querySelector('select').value = product.id
-    el.querySelector('input[name="quantity"]').value = '3'
-    el.querySelector('form[data-form="add-line"]').dispatchEvent(new Event('submit'))
+    el.querySelector('button[data-action="add-product"]').click()
 
     expect(events[0].ticketId).toBe(ticket.id)
     expect(events[0].productId).toBe(product.id)
-    expect(events[0].quantity).toBe(3)
+    expect(events[0].quantity).toBe(1)
   })
 
   it('dispatches line-remove-requested on remove click', async () => {
@@ -112,15 +126,28 @@ describe('MioumTicketView', () => {
     expect(events[0].lineId).toBe(line.id)
   })
 
-  it('dispatches ticket-close-requested on close click', async () => {
+  it('dispatches ticket-close-requested with paymentMethod cash on close-cash click', async () => {
     const ticket = makeTicket('open', [makeLine('Café', 1.5, 1)])
     await el.refresh(ticket, repoWith([]))
 
     const events = []
     el.addEventListener('ticket-close-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="close-ticket"]').click()
+    el.querySelector('button[data-action="close-cash"]').click()
 
     expect(events[0].ticketId).toBe(ticket.id)
+    expect(events[0].paymentMethod).toBe('cash')
+  })
+
+  it('dispatches ticket-close-requested with paymentMethod card on close-card click', async () => {
+    const ticket = makeTicket('open', [makeLine('Café', 1.5, 1)])
+    await el.refresh(ticket, repoWith([]))
+
+    const events = []
+    el.addEventListener('ticket-close-requested', e => events.push(e.detail))
+    el.querySelector('button[data-action="close-card"]').click()
+
+    expect(events[0].ticketId).toBe(ticket.id)
+    expect(events[0].paymentMethod).toBe('card')
   })
 
   it('dispatches ticket-cancel-requested on cancel click', async () => {
@@ -140,7 +167,8 @@ describe('MioumTicketView', () => {
     await el.refresh(ticket, repoWith([]))
     expect(el.textContent).toContain('Café')
     expect(el.textContent).toContain('3')
-    expect(el.querySelector('button[data-action="close-ticket"]')).toBeNull()
+    expect(el.querySelector('button[data-action="close-cash"]')).toBeNull()
+    expect(el.querySelector('button[data-action="close-card"]')).toBeNull()
     expect(el.querySelector('button[data-action="cancel-ticket"]')).toBeNull()
     expect(el.querySelector('[data-status]')).not.toBeNull()
   })
@@ -148,7 +176,7 @@ describe('MioumTicketView', () => {
   it('shows cancelled ticket as read-only with status badge', async () => {
     const ticket = makeTicket('cancelled', [])
     await el.refresh(ticket, repoWith([]))
-    expect(el.querySelector('button[data-action="close-ticket"]')).toBeNull()
+    expect(el.querySelector('button[data-action="close-cash"]')).toBeNull()
     expect(el.querySelector('[data-status]')).not.toBeNull()
   })
 })
