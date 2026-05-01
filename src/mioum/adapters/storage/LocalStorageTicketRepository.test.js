@@ -58,4 +58,13 @@ describe('LocalStorageTicketRepository', () => {
   it('returns null when ticket is not found', async () => {
     expect(await repo.findById('unknown')).toBeNull()
   })
+
+  it('persists across repository instances', async () => {
+    const ticket = Ticket.create()
+    ticket.addLine('prod-1', 'Bière', 2.5, 1)
+    await repo.save(ticket)
+    const repo2 = new LocalStorageTicketRepository()
+    const found = await repo2.findById(ticket.id)
+    expect(found.lines).toHaveLength(1)
+  })
 })

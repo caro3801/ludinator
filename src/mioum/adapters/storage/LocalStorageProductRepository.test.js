@@ -40,4 +40,22 @@ describe('LocalStorageProductRepository', () => {
   it('returns null when product is not found', async () => {
     expect(await repo.findById('unknown')).toBeNull()
   })
+
+  it('overwrites a product on second save (same id)', async () => {
+    const product = Product.create('Bière', 2.5)
+    await repo.save(product)
+    product.update({ price: 3.0 })
+    await repo.save(product)
+    const all = await repo.findAll()
+    expect(all).toHaveLength(1)
+    expect(all[0].price.value).toBe(3.0)
+  })
+
+  it('persists across repository instances', async () => {
+    const product = Product.create('Bière', 2.5)
+    await repo.save(product)
+    const repo2 = new LocalStorageProductRepository()
+    const found = await repo2.findById(product.id)
+    expect(found.name.value).toBe('Bière')
+  })
 })
