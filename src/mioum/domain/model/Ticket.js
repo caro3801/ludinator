@@ -102,6 +102,13 @@ export class Ticket {
     this.#status = 'cancelled'
   }
 
+  reopen() {
+    if (this.#status !== 'closed') throw new ValidationError('Only a closed ticket can be reopened')
+    this.#status = 'open'
+    this.#paymentMethod = null
+    this.#closedAt = null
+  }
+
   toJSON() {
     return {
       id: this.#id,

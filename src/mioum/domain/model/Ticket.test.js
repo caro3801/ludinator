@@ -171,6 +171,40 @@ describe('Ticket', () => {
     })
   })
 
+  describe('reopen', () => {
+    it('sets status back to open and clears paymentMethod and closedAt', () => {
+      const ticket = Ticket.create()
+      ticket.addLine('prod-1', 'Crêpe', 2.50, 1)
+      ticket.close('cash')
+      ticket.reopen()
+      expect(ticket.status).toBe('open')
+      expect(ticket.isOpen).toBe(true)
+      expect(ticket.paymentMethod).toBeNull()
+      expect(ticket.closedAt).toBeNull()
+    })
+
+    it('allows adding lines after reopen', () => {
+      const ticket = Ticket.create()
+      ticket.addLine('prod-1', 'Crêpe', 2.50, 1)
+      ticket.close('cash')
+      ticket.reopen()
+      expect(() => ticket.addLine('prod-2', 'Jus', 1.50, 1)).not.toThrow()
+    })
+
+    it('throws ValidationError when ticket is already open', () => {
+      const ticket = Ticket.create()
+      expect(() => ticket.reopen()).toThrow(ValidationError)
+      expect(() => ticket.reopen()).toThrow('Only a closed ticket can be reopened')
+    })
+
+    it('throws ValidationError when ticket is cancelled', () => {
+      const ticket = Ticket.create()
+      ticket.cancel()
+      expect(() => ticket.reopen()).toThrow(ValidationError)
+      expect(() => ticket.reopen()).toThrow('Only a closed ticket can be reopened')
+    })
+  })
+
   describe('toJSON / fromJSON', () => {
     it('round-trips preserving status, lines, paymentMethod, and closedAt', () => {
       const ticket = Ticket.create()

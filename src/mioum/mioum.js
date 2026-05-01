@@ -9,10 +9,12 @@ import { RemoveLineFromTicket } from './application/usecases/RemoveLineFromTicke
 import { CloseTicket } from './application/usecases/CloseTicket.js'
 import { CancelTicket } from './application/usecases/CancelTicket.js'
 import { GetSalesStats } from './application/usecases/GetSalesStats.js'
+import { ReopenTicket } from './application/usecases/ReopenTicket.js'
 import './adapters/ui/MioumProductForm.js'
 import './adapters/ui/MioumProductList.js'
 import './adapters/ui/MioumTicketView.js'
 import './adapters/ui/MioumStatsView.js'
+import './adapters/ui/MioumHistoryView.js'
 
 const productRepo = new LocalStorageProductRepository()
 const ticketRepo = new LocalStorageTicketRepository()
@@ -26,11 +28,13 @@ const removeLineFromTicket = new RemoveLineFromTicket(ticketRepo)
 const closeTicket = new CloseTicket(ticketRepo)
 const cancelTicket = new CancelTicket(ticketRepo)
 const getSalesStats = new GetSalesStats(ticketRepo)
+const reopenTicket = new ReopenTicket(ticketRepo)
 
 const productForm = document.querySelector('mioum-product-form')
 const productList = document.querySelector('mioum-product-list')
 const ticketView = document.querySelector('mioum-ticket-view')
 const statsView = document.querySelector('mioum-stats-view')
+const historyView = document.querySelector('mioum-history-view')
 
 productForm.createProductUseCase = createProduct
 
@@ -39,6 +43,7 @@ let currentTicket = null
 const refreshProducts = () => productList.refresh(productRepo)
 const refreshTicket = () => ticketView.refresh(currentTicket, productRepo)
 const refreshStats = () => statsView.refresh(getSalesStats)
+const refreshHistory = () => historyView.refresh(ticketRepo)
 
 const dispatchError = msg => document.dispatchEvent(new CustomEvent('mioum-error', { detail: { message: msg } }))
 
@@ -54,6 +59,7 @@ const initTicket = async () => {
 refreshProducts()
 initTicket()
 refreshStats()
+refreshHistory()
 
 document.addEventListener('product-created', () => refreshProducts())
 
@@ -101,6 +107,7 @@ document.addEventListener('ticket-close-requested', async e => {
   try {
     await closeTicket.execute(e.detail)
     refreshStats()
+    refreshHistory()
     currentTicket = await openTicket.execute()
     refreshTicket()
   } catch (err) { dispatchError(err.message) }
@@ -109,8 +116,19 @@ document.addEventListener('ticket-close-requested', async e => {
 document.addEventListener('ticket-cancel-requested', async e => {
   try {
     await cancelTicket.execute(e.detail)
+    refreshHistory()
     currentTicket = await openTicket.execute()
     refreshTicket()
+  } catch (err) { dispatchError(err.message) }
+})
+
+document.addEventListener('ticket-reopen-requested', async e => {
+  try {
+    currentTicket = await reopenTicket.execute({ ticketId: e.detail.ticketId })
+    refreshHistory()
+    refreshTicket()
+    const ticketTabBtn = document.querySelector('[data-bs-target="#tab-ticket"]')
+    if (ticketTabBtn) bootstrap.Tab.getOrCreateInstance(ticketTabBtn).show()
   } catch (err) { dispatchError(err.message) }
 })
 
