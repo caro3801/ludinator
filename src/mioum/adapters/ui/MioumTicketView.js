@@ -4,6 +4,7 @@ export class MioumTicketView extends HTMLElement {
       const btn = e.target.closest('button[data-action]')
       if (!btn) return
       const { action, ticketId, lineId, productId } = btn.dataset
+      if (!ticketId) return
       if (action === 'remove-line') {
         this.dispatchEvent(new CustomEvent('line-remove-requested', {
           detail: { ticketId, lineId },
@@ -95,13 +96,15 @@ export class MioumTicketView extends HTMLElement {
               <div class="d-grid gap-2">
                 <button class="btn btn-success btn-lg"
                   data-action="close-cash"
-                  data-ticket-id="${ticket.id}">
-                  💵 Espèces
+                  data-ticket-id="${ticket.id}"
+                  ${lines.length === 0 ? 'disabled' : ''}>
+                  Espèces
                 </button>
                 <button class="btn btn-primary btn-lg"
                   data-action="close-card"
-                  data-ticket-id="${ticket.id}">
-                  💳 Carte bleue
+                  data-ticket-id="${ticket.id}"
+                  ${lines.length === 0 ? 'disabled' : ''}>
+                  Carte bleue
                 </button>
                 <button class="btn btn-outline-danger btn-sm"
                   data-action="cancel-ticket"
@@ -142,7 +145,7 @@ export class MioumTicketView extends HTMLElement {
             <tfoot>
               <tr>
                 <td colspan="3" class="text-end fw-bold">Total</td>
-                <td class="fw-bold">${ticket.total} €</td>
+                <td class="fw-bold">${ticket.total.toFixed(2)} €</td>
               </tr>
             </tfoot>
           </table>

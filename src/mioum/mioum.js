@@ -45,6 +45,7 @@ const dispatchError = msg => document.dispatchEvent(new CustomEvent('mioum-error
 const initTicket = async () => {
   try {
     const openTickets = await ticketRepo.findByStatus('open')
+    if (openTickets.length > 1) console.warn(`[mioum] ${openTickets.length} tickets ouverts trouvés, utilisation du premier.`)
     currentTicket = openTickets.length > 0 ? openTickets[0] : await openTicket.execute()
     refreshTicket()
   } catch (err) { dispatchError(err.message) }
