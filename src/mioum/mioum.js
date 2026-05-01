@@ -40,6 +40,8 @@ const refreshProducts = () => productList.refresh(productRepo)
 const refreshTicket = () => ticketView.refresh(currentTicket, productRepo)
 const refreshStats = () => statsView.refresh(getSalesStats)
 
+const dispatchError = msg => document.dispatchEvent(new CustomEvent('mioum-error', { detail: { message: msg } }))
+
 refreshProducts()
 refreshTicket()
 refreshStats()
@@ -47,47 +49,63 @@ refreshStats()
 document.addEventListener('product-created', () => refreshProducts())
 
 document.addEventListener('product-delete-requested', async e => {
-  await deleteProduct.execute({ id: e.detail.productId })
-  refreshProducts()
+  try {
+    await deleteProduct.execute({ id: e.detail.productId })
+    refreshProducts()
+  } catch (err) { dispatchError(err.message) }
 })
 
 document.addEventListener('product-edit-requested', async e => {
+  // TODO: replace with inline edit form
   const { productId, name, price } = e.detail
   const newName = window.prompt('Nouveau nom du produit :', name)
   if (newName === null) return
   const newPriceRaw = window.prompt('Nouveau prix (€) :', price)
   if (newPriceRaw === null) return
   const newPrice = parseFloat(newPriceRaw)
-  await updateProduct.execute({ id: productId, name: newName, price: newPrice })
-  refreshProducts()
+  if (isNaN(newPrice) || newPrice < 0) { dispatchError('Prix invalide.'); return }
+  try {
+    await updateProduct.execute({ id: productId, name: newName, price: newPrice })
+    refreshProducts()
+  } catch (err) { dispatchError(err.message) }
 })
 
 document.getElementById('btn-open-ticket').addEventListener('click', async () => {
-  currentTicket = await openTicket.execute()
-  refreshTicket()
+  try {
+    currentTicket = await openTicket.execute()
+    refreshTicket()
+  } catch (err) { dispatchError(err.message) }
 })
 
 document.addEventListener('line-add-requested', async e => {
-  await addLineToTicket.execute(e.detail)
-  currentTicket = await ticketRepo.findById(e.detail.ticketId)
-  refreshTicket()
+  try {
+    await addLineToTicket.execute(e.detail)
+    currentTicket = await ticketRepo.findById(e.detail.ticketId)
+    refreshTicket()
+  } catch (err) { dispatchError(err.message) }
 })
 
 document.addEventListener('line-remove-requested', async e => {
-  await removeLineFromTicket.execute(e.detail)
-  currentTicket = await ticketRepo.findById(e.detail.ticketId)
-  refreshTicket()
+  try {
+    await removeLineFromTicket.execute(e.detail)
+    currentTicket = await ticketRepo.findById(e.detail.ticketId)
+    refreshTicket()
+  } catch (err) { dispatchError(err.message) }
 })
 
 document.addEventListener('ticket-close-requested', async e => {
-  currentTicket = await closeTicket.execute(e.detail)
-  refreshTicket()
-  refreshStats()
+  try {
+    currentTicket = await closeTicket.execute(e.detail)
+    refreshTicket()
+    refreshStats()
+  } catch (err) { dispatchError(err.message) }
 })
 
 document.addEventListener('ticket-cancel-requested', async e => {
-  currentTicket = await cancelTicket.execute(e.detail)
-  refreshTicket()
+  try {
+    currentTicket = await cancelTicket.execute(e.detail)
+    refreshTicket()
+  } catch (err) { dispatchError(err.message) }
 })
 
 document.addEventListener('mioum-error', e => {
