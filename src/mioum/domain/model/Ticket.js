@@ -73,6 +73,12 @@ export class Ticket {
 
   addLine(productId, productName, unitPrice, quantity) {
     if (!this.isOpen) throw new ValidationError('Ticket is not open')
+    const existing = this.#lines.find(l => l.productId === productId)
+    if (existing) {
+      const merged = TicketLine.create(productId, existing.productName, existing.unitPrice, existing.quantity + quantity)
+      this.#lines = this.#lines.map(l => l.productId === productId ? merged : l)
+      return merged
+    }
     const line = TicketLine.create(productId, productName, unitPrice, quantity)
     this.#lines.push(line)
     return line

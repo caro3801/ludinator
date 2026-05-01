@@ -45,6 +45,27 @@ describe('Ticket', () => {
       expect(() => ticket.addLine('prod-1', 'Crêpe', 2.50, 1)).toThrow(ValidationError)
       expect(() => ticket.addLine('prod-1', 'Crêpe', 2.50, 1)).toThrow('Ticket is not open')
     })
+
+    it('merges quantity when adding the same product twice', () => {
+      const ticket = Ticket.create()
+      ticket.addLine('prod-1', 'Crêpe', 2.50, 1)
+      const merged = ticket.addLine('prod-1', 'Crêpe', 2.50, 1)
+      expect(ticket.lines).toHaveLength(1)
+      expect(merged.quantity).toBe(2)
+      expect(merged.subtotal).toBe(5.00)
+      expect(ticket.total).toBe(5.00)
+    })
+
+    it('preserves order and other lines when merging', () => {
+      const ticket = Ticket.create()
+      ticket.addLine('prod-1', 'Crêpe', 2.50, 1)
+      ticket.addLine('prod-2', 'Jus', 1.50, 1)
+      ticket.addLine('prod-1', 'Crêpe', 2.50, 2)
+      expect(ticket.lines).toHaveLength(2)
+      const crêpe = ticket.lines.find(l => l.productId === 'prod-1')
+      expect(crêpe.quantity).toBe(3)
+      expect(crêpe.subtotal).toBe(7.50)
+    })
   })
 
   describe('removeLine', () => {
