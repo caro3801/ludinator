@@ -32,9 +32,12 @@ export class GetSalesStats {
 
     return {
       ticketCount,
-      totalRevenue,
-      averageTicket,
-      breakdown: [...breakdownMap.values()],
+      totalRevenue: Math.round(totalRevenue * 100) / 100,
+      averageTicket: ticketCount > 0 ? Math.round((totalRevenue / ticketCount) * 100) / 100 : 0,
+      breakdown: [...breakdownMap.values()].map(entry => ({
+        ...entry,
+        revenue: Math.round(entry.revenue * 100) / 100,
+      })),
     }
   }
 }

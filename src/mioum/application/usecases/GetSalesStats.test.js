@@ -32,8 +32,8 @@ describe('GetSalesStats', () => {
     const stats = await useCase.execute()
 
     expect(stats.ticketCount).toBe(1)
-    expect(stats.totalRevenue).toBeCloseTo(3.00)
-    expect(stats.averageTicket).toBeCloseTo(3.00)
+    expect(stats.totalRevenue).toBe(3.00)
+    expect(stats.averageTicket).toBe(3.00)
     expect(stats.breakdown).toHaveLength(1)
     expect(stats.breakdown[0]).toMatchObject({ productId: 'p1', productName: 'Café', quantity: 2, revenue: 3.00 })
   })
@@ -47,8 +47,8 @@ describe('GetSalesStats', () => {
     const stats = await useCase.execute()
 
     expect(stats.ticketCount).toBe(2)
-    expect(stats.totalRevenue).toBeCloseTo(7.50)
-    expect(stats.averageTicket).toBeCloseTo(3.75)
+    expect(stats.totalRevenue).toBe(7.50)
+    expect(stats.averageTicket).toBe(3.75)
     expect(stats.breakdown).toHaveLength(2)
   })
 
@@ -68,8 +68,8 @@ describe('GetSalesStats', () => {
     const stats = await useCase.execute()
 
     expect(stats.ticketCount).toBe(1)
-    expect(stats.totalRevenue).toBeCloseTo(0.50)
-    expect(stats.averageTicket).toBeCloseTo(0.50)
+    expect(stats.totalRevenue).toBe(0.50)
+    expect(stats.averageTicket).toBe(0.50)
     expect(stats.breakdown).toHaveLength(1)
     expect(stats.breakdown[0].productId).toBe('p3')
   })
