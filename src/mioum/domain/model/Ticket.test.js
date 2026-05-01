@@ -222,9 +222,11 @@ describe('TicketLine (via Ticket.addLine)', () => {
     expect(() => ticket.addLine('prod-1', 'Crêpe', 2.50, 1.5)).toThrow(ValidationError)
   })
 
-  it('throws ValidationError when unitPrice is negative', () => {
+  it('creates a line with a negative unit price (retour / remise)', () => {
     const ticket = Ticket.create()
-    expect(() => ticket.addLine('prod-1', 'Crêpe', -1, 1)).toThrow(ValidationError)
+    const line = ticket.addLine('prod-1', 'Retour consigne', -1, 1)
+    expect(line.unitPrice).toBe(-1)
+    expect(line.subtotal).toBe(-1)
   })
 
   it('throws ValidationError when unitPrice is NaN', () => {

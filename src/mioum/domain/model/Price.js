@@ -7,9 +7,7 @@ export class Price {
     if (typeof value !== 'number' || isNaN(value)) {
       throw new ValidationError('Price must be a number')
     }
-    if (value < 0) {
-      throw new ValidationError('Price cannot be negative')
-    }
+
     this.#value = value
   }
 

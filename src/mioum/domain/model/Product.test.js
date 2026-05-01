@@ -20,8 +20,9 @@ describe('Product', () => {
       expect(() => Product.create('', 2.50)).toThrow(ValidationError)
     })
 
-    it('throws ValidationError when price is negative', () => {
-      expect(() => Product.create('Crêpe', -1)).toThrow(ValidationError)
+    it('creates a product with a negative price (retour / remise)', () => {
+      const p = Product.create('Retour consigne', -1)
+      expect(p.price.value).toBe(-1)
     })
   })
 
@@ -56,7 +57,7 @@ describe('Product', () => {
 
     it('does not mutate name when price update fails', () => {
       const product = Product.create('Crêpe', 2.50)
-      expect(() => product.update({ name: 'Galette', price: -1 })).toThrow(ValidationError)
+      expect(() => product.update({ name: 'Galette', price: NaN })).toThrow(ValidationError)
       expect(product.name.value).toBe('Crêpe')
     })
   })

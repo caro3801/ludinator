@@ -10,7 +10,7 @@ export class MioumProductForm extends HTMLElement {
           <input name="name" type="text" class="form-control form-control-sm" placeholder="Nom du produit" required>
         </div>
         <div class="mb-2">
-          <input name="price" type="number" step="0.01" min="0" class="form-control form-control-sm" placeholder="Prix (€)" required>
+          <input name="price" type="number" step="0.01" class="form-control form-control-sm" placeholder="Prix (€)" required>
         </div>
         <button type="submit" class="btn btn-sm btn-primary">Créer</button>
       </form>

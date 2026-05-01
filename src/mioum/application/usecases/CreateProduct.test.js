@@ -22,7 +22,8 @@ describe('CreateProduct', () => {
     await expect(useCase.execute({ name: '', price: 2.50 })).rejects.toThrow(ValidationError)
   })
 
-  it('throws ValidationError when price is negative', async () => {
-    await expect(useCase.execute({ name: 'x', price: -1 })).rejects.toThrow(ValidationError)
+  it('creates a product with a negative price (retour / remise)', async () => {
+    const product = await useCase.execute({ name: 'Retour consigne', price: -1 })
+    expect(product.price.value).toBe(-1)
   })
 })

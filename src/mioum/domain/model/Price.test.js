@@ -13,8 +13,9 @@ describe('Price', () => {
     expect(p.value).toBe(0)
   })
 
-  it('throws ValidationError for a negative value', () => {
-    expect(() => Price.create(-1)).toThrow(ValidationError)
+  it('creates a negative price (retour / remise)', () => {
+    const p = Price.create(-1)
+    expect(p.value).toBe(-1)
   })
 
   it('throws ValidationError for a non-numeric string', () => {
