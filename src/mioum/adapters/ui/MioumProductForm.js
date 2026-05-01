@@ -27,7 +27,7 @@ export class MioumProductForm extends HTMLElement {
       this.dispatchEvent(new CustomEvent('product-created', { detail: product, bubbles: true }))
       e.target.reset()
     } catch (err) {
-      this.dispatchEvent(new CustomEvent('mioum-error', { detail: err, bubbles: true }))
+      this.dispatchEvent(new CustomEvent('mioum-error', { detail: { message: err.message }, bubbles: true }))
     }
   }
 }
