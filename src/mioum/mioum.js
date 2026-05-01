@@ -68,12 +68,14 @@ document.getElementById('btn-open-ticket').addEventListener('click', async () =>
 })
 
 document.addEventListener('line-add-requested', async e => {
-  currentTicket = await addLineToTicket.execute(e.detail)
+  await addLineToTicket.execute(e.detail)
+  currentTicket = await ticketRepo.findById(e.detail.ticketId)
   refreshTicket()
 })
 
 document.addEventListener('line-remove-requested', async e => {
-  currentTicket = await removeLineFromTicket.execute(e.detail)
+  await removeLineFromTicket.execute(e.detail)
+  currentTicket = await ticketRepo.findById(e.detail.ticketId)
   refreshTicket()
 })
 
