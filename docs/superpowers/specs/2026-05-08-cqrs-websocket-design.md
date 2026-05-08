@@ -141,22 +141,17 @@ src/
     EventStore.js                  ← append / replay sur SQLite
     CommandDispatcher.js           ← route module+action → handler
     mioum/
-      MioumCommandHandler.js
-      MioumProjection.js
-      SqliteProductRepository.js
-      SqliteTicketRepository.js
+      MioumCommandHandler.js       ← exécute use cases mioum, retourne events
+      MioumProjection.js           ← replay events → { products, tickets }
     crew/
       CrewCommandHandler.js
-      CrewProjection.js
-      SqliteVolunteerRepository.js
-      SqlitePostRepository.js
-      SqliteScheduleRepository.js
+      CrewProjection.js            ← replay events → { volunteers, posts, schedule }
     fest/
       FestCommandHandler.js
-      FestProjection.js
-      SqliteActivityRepository.js
-      SqliteEntryLogRepository.js
+      FestProjection.js            ← replay events → { activities, entryLog }
 ```
+
+Les `SqliteXxxRepository` du côté client (`adapters/storage`) ne sont pas portés sur le serveur. Dans l'architecture event-ready, l'EventStore est la seule couche de persistance ; les projections reconstruisent l'état en mémoire par replay. Des repositories SQLite dédiés pourront être ajoutés plus tard comme optimisation (snapshots, read models persistés).
 
 ### 4.1 server.js
 
@@ -167,7 +162,7 @@ Bun.serve({
     if (server.upgrade(req)) return
   },
   websocket: {
-    open(ws) {
+    async open(ws) {
       // envoie le snapshot initial de tous les modules
       for (const module of ['mioum', 'crew', 'fest']) {
         const state = await projections[module].rebuild()
