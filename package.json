@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "server": "bun run src/server/server.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },
