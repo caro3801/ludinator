@@ -2,6 +2,8 @@ import { generateId } from '../shared/generateId.js'
 import { EventStore } from './EventStore.js'
 import { MioumCommandHandler } from './mioum/MioumCommandHandler.js'
 import { MioumProjection } from './mioum/MioumProjection.js'
+import { CrewCommandHandler } from './crew/CrewCommandHandler.js'
+import { CrewProjection } from './crew/CrewProjection.js'
 
 export class CommandDispatcher {
   #store
@@ -11,8 +13,15 @@ export class CommandDispatcher {
   constructor(eventStore) {
     this.#store = eventStore ?? new EventStore()
     const mioumProjection = new MioumProjection(this.#store)
-    this.#projections = { mioum: mioumProjection }
-    this.#handlers = { mioum: new MioumCommandHandler(mioumProjection) }
+    const crewProjection = new CrewProjection(this.#store)
+    this.#projections = {
+      mioum: mioumProjection,
+      crew: crewProjection,
+    }
+    this.#handlers = {
+      mioum: new MioumCommandHandler(mioumProjection),
+      crew: new CrewCommandHandler(crewProjection),
+    }
   }
 
   async handle(ws, { id, module, action, payload }, clients) {
