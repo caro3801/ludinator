@@ -1,14 +1,10 @@
+import { Schedule } from '../../domain/model/Schedule.js'
+import { VolunteerUnassigned } from '../../domain/events.js'
+
 export class UnassignVolunteer {
-  #scheduleRepo
-
-  constructor(scheduleRepository) {
-    this.#scheduleRepo = scheduleRepository
-  }
-
-  async execute({ assignmentId, editionId }) {
-    const schedule = await this.#scheduleRepo.findByEdition(editionId)
-    if (!schedule) throw new Error(`Schedule not found for edition: ${editionId}`)
+  execute({ schedule: scheduleData, assignmentId }) {
+    const schedule = Schedule.fromJSON(scheduleData)
     schedule.removeAssignment(assignmentId)
-    await this.#scheduleRepo.save(schedule)
+    return new VolunteerUnassigned({ schedule: schedule.toJSON() })
   }
 }

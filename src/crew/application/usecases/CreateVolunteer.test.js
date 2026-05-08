@@ -1,22 +1,15 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { CreateVolunteer } from './CreateVolunteer.js'
-import { InMemoryVolunteerRepository } from '../../adapters/storage/InMemoryVolunteerRepository.js'
+import { VolunteerCreated } from '../../domain/events.js'
 
 describe('CreateVolunteer', () => {
-  let repo, useCase
-
-  beforeEach(() => {
-    repo = new InMemoryVolunteerRepository()
-    useCase = new CreateVolunteer(repo)
+  it('emits VolunteerCreated with correct name', () => {
+    const event = new CreateVolunteer().execute({ name: 'Alice' })
+    expect(event).toBeInstanceOf(VolunteerCreated)
+    expect(event.payload.name).toBe('Alice')
   })
 
-  it('creates and persists a volunteer', async () => {
-    const volunteer = await useCase.execute({ name: 'Alice' })
-    expect(volunteer.name.value).toBe('Alice')
-    expect(await repo.findById(volunteer.id)).toBe(volunteer)
-  })
-
-  it('rejects an empty name', async () => {
-    await expect(useCase.execute({ name: '' })).rejects.toThrow()
+  it('throws on empty name', () => {
+    expect(() => new CreateVolunteer().execute({ name: '' })).toThrow()
   })
 })

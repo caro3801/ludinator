@@ -1,15 +1,10 @@
+import { Volunteer } from '../../domain/model/Volunteer.js'
+import { VolunteerNameUpdated } from '../../domain/events.js'
+
 export class UpdateVolunteerName {
-  #repo
-
-  constructor(volunteerRepository) {
-    this.#repo = volunteerRepository
-  }
-
-  async execute({ volunteerId, name }) {
-    const volunteer = await this.#repo.findById(volunteerId)
-    if (!volunteer) throw new Error(`Volunteer not found: ${volunteerId}`)
+  execute({ volunteer: volunteerData, name }) {
+    const volunteer = Volunteer.fromJSON(volunteerData)
     volunteer.updateName(name)
-    await this.#repo.save(volunteer)
-    return volunteer
+    return new VolunteerNameUpdated({ volunteer: volunteer.toJSON() })
   }
 }

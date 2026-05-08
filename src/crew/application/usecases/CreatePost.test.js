@@ -1,27 +1,21 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { CreatePost } from './CreatePost.js'
-import { InMemoryPostRepository } from '../../adapters/storage/InMemoryPostRepository.js'
+import { PostCreated } from '../../domain/events.js'
 
 describe('CreatePost', () => {
-  let repo, useCase
-
-  beforeEach(() => {
-    repo = new InMemoryPostRepository()
-    useCase = new CreatePost(repo)
+  it('emits PostCreated with correct data', () => {
+    const event = new CreatePost().execute({ name: 'Accueil', minVolunteers: 2 })
+    expect(event).toBeInstanceOf(PostCreated)
+    expect(event.payload.name).toBe('Accueil')
+    expect(event.payload.minVolunteers).toBe(2)
+    expect(event.payload.slots).toEqual([])
   })
 
-  it('creates and persists a post', async () => {
-    const post = await useCase.execute({ name: 'Accueil', minVolunteers: 2 })
-    expect(post.name.value).toBe('Accueil')
-    expect(post.minVolunteers).toBe(2)
-    expect(await repo.findById(post.id)).toBe(post)
+  it('throws on empty name', () => {
+    expect(() => new CreatePost().execute({ name: '', minVolunteers: 2 })).toThrow()
   })
 
-  it('rejects an empty name', async () => {
-    await expect(useCase.execute({ name: '', minVolunteers: 1 })).rejects.toThrow()
-  })
-
-  it('rejects zero minVolunteers', async () => {
-    await expect(useCase.execute({ name: 'Bar', minVolunteers: 0 })).rejects.toThrow()
+  it('throws when minVolunteers < 1', () => {
+    expect(() => new CreatePost().execute({ name: 'Bar', minVolunteers: 0 })).toThrow()
   })
 })

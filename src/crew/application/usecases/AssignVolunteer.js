@@ -1,28 +1,14 @@
+import { Volunteer } from '../../domain/model/Volunteer.js'
+import { TimeSlot } from '../../domain/model/TimeSlot.js'
 import { Schedule } from '../../domain/model/Schedule.js'
+import { VolunteerAssigned } from '../../domain/events.js'
 
 export class AssignVolunteer {
-  #volunteers
-  #posts
-  #schedules
-
-  constructor(volunteerRepository, postRepository, scheduleRepository) {
-    this.#volunteers = volunteerRepository
-    this.#posts = postRepository
-    this.#schedules = scheduleRepository
-  }
-
-  async execute({ volunteerId, slotId, editionId }) {
-    const volunteer = await this.#volunteers.findById(volunteerId)
-    if (!volunteer) throw new Error(`Volunteer not found: ${volunteerId}`)
-
-    const slot = await this.#posts.findSlotById(slotId)
-    if (!slot) throw new Error(`Slot not found: ${slotId}`)
-
-    let schedule = await this.#schedules.findByEdition(editionId)
-    if (!schedule) schedule = Schedule.create(editionId)
-
-    const assignment = schedule.assign(volunteer, slot)
-    await this.#schedules.save(schedule)
-    return assignment
+  execute({ volunteer: volunteerData, slot: slotData, schedule: scheduleData, editionId }) {
+    const volunteer = Volunteer.fromJSON(volunteerData)
+    const slot = TimeSlot.fromJSON(slotData)
+    const schedule = scheduleData ? Schedule.fromJSON(scheduleData) : Schedule.create(editionId)
+    schedule.assign(volunteer, slot)
+    return new VolunteerAssigned({ schedule: schedule.toJSON() })
   }
 }

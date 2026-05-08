@@ -1,25 +1,10 @@
+import { Post } from '../../domain/model/Post.js'
+import { SlotRemovedFromPost } from '../../domain/events.js'
+
 export class RemoveSlotFromPost {
-  #postRepo
-  #scheduleRepo
-
-  constructor(postRepository, scheduleRepository) {
-    this.#postRepo = postRepository
-    this.#scheduleRepo = scheduleRepository
-  }
-
-  async execute({ postId, slotId, editionId }) {
-    const post = await this.#postRepo.findById(postId)
-    if (!post) throw new Error(`Post not found: ${postId}`)
-
+  execute({ post: postData, slotId }) {
+    const post = Post.fromJSON(postData)
     post.removeSlot(slotId)
-    await this.#postRepo.save(post)
-
-    if (editionId) {
-      const schedule = await this.#scheduleRepo.findByEdition(editionId)
-      if (schedule) {
-        schedule.removeAssignmentsForSlot(slotId)
-        await this.#scheduleRepo.save(schedule)
-      }
-    }
+    return new SlotRemovedFromPost({ post: post.toJSON(), slotId })
   }
 }

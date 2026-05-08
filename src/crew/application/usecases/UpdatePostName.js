@@ -1,15 +1,10 @@
+import { Post } from '../../domain/model/Post.js'
+import { PostNameUpdated } from '../../domain/events.js'
+
 export class UpdatePostName {
-  #repo
-
-  constructor(postRepository) {
-    this.#repo = postRepository
-  }
-
-  async execute({ postId, name }) {
-    const post = await this.#repo.findById(postId)
-    if (!post) throw new Error(`Post not found: ${postId}`)
+  execute({ post: postData, name }) {
+    const post = Post.fromJSON(postData)
     post.updateName(name)
-    await this.#repo.save(post)
-    return post
+    return new PostNameUpdated({ post: post.toJSON() })
   }
 }

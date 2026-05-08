@@ -1,29 +1,18 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { UpdateVolunteerName } from './UpdateVolunteerName.js'
-import { InMemoryVolunteerRepository } from '../../adapters/storage/InMemoryVolunteerRepository.js'
+import { VolunteerNameUpdated } from '../../domain/events.js'
 import { Volunteer } from '../../domain/model/Volunteer.js'
 
 describe('UpdateVolunteerName', () => {
-  let repo, useCase, volunteer
-
-  beforeEach(async () => {
-    repo = new InMemoryVolunteerRepository()
-    useCase = new UpdateVolunteerName(repo)
-    volunteer = Volunteer.create('Alice')
-    await repo.save(volunteer)
+  it('emits VolunteerNameUpdated with new name', () => {
+    const volunteer = Volunteer.create('Alice').toJSON()
+    const event = new UpdateVolunteerName().execute({ volunteer, name: 'Bob' })
+    expect(event).toBeInstanceOf(VolunteerNameUpdated)
+    expect(event.payload.name).toBe('Bob')
   })
 
-  it('updates the volunteer name and persists it', async () => {
-    const updated = await useCase.execute({ volunteerId: volunteer.id, name: 'Alicia' })
-    expect(updated.name.value).toBe('Alicia')
-    expect((await repo.findById(volunteer.id)).name.value).toBe('Alicia')
-  })
-
-  it('throws when volunteer is not found', async () => {
-    await expect(useCase.execute({ volunteerId: 'unknown', name: 'Alicia' })).rejects.toThrow()
-  })
-
-  it('rejects an empty name', async () => {
-    await expect(useCase.execute({ volunteerId: volunteer.id, name: '' })).rejects.toThrow()
+  it('throws on empty name', () => {
+    const volunteer = Volunteer.create('Alice').toJSON()
+    expect(() => new UpdateVolunteerName().execute({ volunteer, name: '' })).toThrow()
   })
 })

@@ -1,15 +1,9 @@
 import { Post } from '../../domain/model/Post.js'
+import { PostCreated } from '../../domain/events.js'
 
 export class CreatePost {
-  #repo
-
-  constructor(postRepository) {
-    this.#repo = postRepository
-  }
-
-  async execute({ name, minVolunteers }) {
+  execute({ name, minVolunteers }) {
     const post = Post.create(name, minVolunteers)
-    await this.#repo.save(post)
-    return post
+    return new PostCreated({ post: post.toJSON() })
   }
 }

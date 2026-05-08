@@ -1,17 +1,11 @@
+import { Post } from '../../domain/model/Post.js'
 import { TimeWindow } from '../../domain/model/TimeWindow.js'
+import { SlotUpdatedInPost } from '../../domain/events.js'
 
 export class UpdateSlotInPost {
-  #repo
-
-  constructor(postRepository) {
-    this.#repo = postRepository
-  }
-
-  async execute({ postId, slotId, day, startTime, endTime }) {
-    const post = await this.#repo.findById(postId)
-    if (!post) throw new Error(`Post not found: ${postId}`)
-    const slot = post.updateSlotWindow(slotId, new TimeWindow(day, startTime, endTime))
-    await this.#repo.save(post)
-    return slot
+  execute({ post: postData, slotId, day, startTime, endTime }) {
+    const post = Post.fromJSON(postData)
+    post.updateSlotWindow(slotId, new TimeWindow(day, startTime, endTime))
+    return new SlotUpdatedInPost({ post: post.toJSON() })
   }
 }

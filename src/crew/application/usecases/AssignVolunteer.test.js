@@ -1,80 +1,35 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { AssignVolunteer } from './AssignVolunteer.js'
-import { InMemoryVolunteerRepository } from '../../adapters/storage/InMemoryVolunteerRepository.js'
-import { InMemoryPostRepository } from '../../adapters/storage/InMemoryPostRepository.js'
-import { InMemoryScheduleRepository } from '../../adapters/storage/InMemoryScheduleRepository.js'
+import { VolunteerAssigned } from '../../domain/events.js'
 import { Volunteer } from '../../domain/model/Volunteer.js'
 import { Post } from '../../domain/model/Post.js'
 import { TimeWindow } from '../../domain/model/TimeWindow.js'
 
 describe('AssignVolunteer', () => {
-  let volunteerRepo, postRepo, scheduleRepo, useCase
-  let alice, accueil, morningSlot
-
-  beforeEach(async () => {
-    volunteerRepo = new InMemoryVolunteerRepository()
-    postRepo = new InMemoryPostRepository()
-    scheduleRepo = new InMemoryScheduleRepository()
-    useCase = new AssignVolunteer(volunteerRepo, postRepo, scheduleRepo)
-
-    alice = Volunteer.create('Alice')
-    await volunteerRepo.save(alice)
-
-    accueil = Post.create('Accueil', 2)
-    morningSlot = accueil.addSlot(new TimeWindow('saturday', '09:00', '12:00'))
-    await postRepo.save(accueil)
+  it('emits VolunteerAssigned with assignment in schedule', () => {
+    const volunteer = Volunteer.create('Alice').toJSON()
+    const p = Post.create('Accueil', 2)
+    p.addSlot(new TimeWindow('samedi', '09:00', '12:00'))
+    const slot = p.slots[0].toJSON()
+    const event = new AssignVolunteer().execute({ volunteer, slot, schedule: null, editionId: 'edition-2024' })
+    expect(event).toBeInstanceOf(VolunteerAssigned)
+    expect(event.payload.editionId).toBe('edition-2024')
+    expect(event.payload.assignments).toHaveLength(1)
+    expect(event.payload.assignments[0].volunteerId).toBe(volunteer.id)
+    expect(event.payload.assignments[0].slotId).toBe(slot.id)
   })
 
-  it('assigns a volunteer to a slot and persists the schedule', async () => {
-    const assignment = await useCase.execute({
-      volunteerId: alice.id,
-      slotId: morningSlot.id,
-      editionId: 'edition-2024',
-    })
+  it('adds to existing schedule when provided', () => {
+    const v1 = Volunteer.create('Alice').toJSON()
+    const v2 = Volunteer.create('Bob').toJSON()
+    const p = Post.create('Accueil', 2)
+    p.addSlot(new TimeWindow('samedi', '09:00', '12:00'))
+    p.addSlot(new TimeWindow('samedi', '14:00', '17:00'))
+    const slot1 = p.slots[0].toJSON()
+    const slot2 = p.slots[1].toJSON()
 
-    expect(assignment.volunteerId).toBe(alice.id)
-    expect(assignment.slotId).toBe(morningSlot.id)
-    expect(await scheduleRepo.findByEdition('edition-2024')).not.toBeNull()
-  })
-
-  it('creates a new schedule when none exists for the edition', async () => {
-    await useCase.execute({
-      volunteerId: alice.id,
-      slotId: morningSlot.id,
-      editionId: 'edition-2024',
-    })
-    const schedule = await scheduleRepo.findByEdition('edition-2024')
-    expect(schedule).not.toBeNull()
-    expect(schedule.getAssignmentsForVolunteer(alice.id)).toHaveLength(1)
-  })
-
-  it('allows assignment even when the volunteer has a conflicting slot', async () => {
-    const bar = Post.create('Bar', 1)
-    const conflictingSlot = bar.addSlot(new TimeWindow('saturday', '11:00', '14:00'))
-    await postRepo.save(bar)
-
-    await useCase.execute({ volunteerId: alice.id, slotId: morningSlot.id, editionId: 'edition-2024' })
-
-    await expect(useCase.execute({
-      volunteerId: alice.id,
-      slotId: conflictingSlot.id,
-      editionId: 'edition-2024',
-    })).resolves.toBeDefined()
-  })
-
-  it('throws when volunteer is not found', async () => {
-    await expect(useCase.execute({
-      volunteerId: 'unknown',
-      slotId: morningSlot.id,
-      editionId: 'edition-2024',
-    })).rejects.toThrow()
-  })
-
-  it('throws when slot is not found', async () => {
-    await expect(useCase.execute({
-      volunteerId: alice.id,
-      slotId: 'unknown',
-      editionId: 'edition-2024',
-    })).rejects.toThrow()
+    const first = new AssignVolunteer().execute({ volunteer: v1, slot: slot1, schedule: null, editionId: 'edition-2024' })
+    const second = new AssignVolunteer().execute({ volunteer: v2, slot: slot2, schedule: first.payload, editionId: 'edition-2024' })
+    expect(second.payload.assignments).toHaveLength(2)
   })
 })
