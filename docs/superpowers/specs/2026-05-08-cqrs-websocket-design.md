@@ -271,20 +271,65 @@ src/
 
 ### 6.1 WsClient.js
 
+`WsClient` gère la connexion, la queue offline, et la reconnexion de manière transparente pour les orchestrateurs.
+
 ```js
 export class WsClient {
-  // envoie une commande, retourne Promise<void> (rejette sur ok: false)
+  // envoie une commande
+  // - si connecté : envoi immédiat, retourne Promise<void> (rejette sur ok: false)
+  // - si déconnecté : mise en queue locale, retourne Promise<void> résolu immédiatement
   send(module, action, payload) { ... }
 
   // abonne au broadcast d'état d'un module
   onState(module, callback) { ... }
+
+  // abonne aux changements d'état de connexion
+  onConnectionChange(callback) { ... }  // callback({ connected: bool, queueLength: number })
 }
 ```
 
-### 6.2 Orchestrateurs après migration
+### 6.2 Queue offline
+
+La queue est persistée dans `localStorage` sous la clé `ludinator:queue` — simple, synchrone, survit à un rechargement de page.
+
+Structure d'une entrée :
+```json
+{ "id": "uuid-v4", "module": "mioum", "action": "AddLineToTicket", "payload": { ... }, "queuedAt": "ISO8601" }
+```
+
+**Flux quand le client est déconnecté :**
+1. `send()` ajoute la commande à la queue et notifie `onConnectionChange`
+2. L'UI affiche un indicateur visuel "hors ligne — X commandes en attente"
+3. L'état affiché est le dernier état reçu du serveur (gelé)
+
+**Flux à la reconnexion :**
+1. `WsClient` reçoit le snapshot initial du serveur → rafraîchit l'UI
+2. `WsClient` rejoue la queue dans l'ordre d'insertion
+3. Pour chaque commande : envoi → attente d'ack → suppression de la queue si `ok: true`
+4. Si une commande reçoit `ok: false` (validation échouée) : elle est supprimée de la queue et l'erreur est notifiée via `onConnectionChange`
+5. Une fois la queue vidée, le serveur broadcast l'état final → l'UI est à jour
+
+**Pas d'optimistic updates** : l'état affiché est toujours l'état confirmé par le serveur. Pendant la déconnexion, l'UI est en lecture seule sur le dernier état connu. Les actions sont acceptées (queued) mais leur effet n'est visible qu'après réconciliation.
+
+### 6.3 Indicateur visuel offline
+
+Les orchestrateurs s'abonnent à `onConnectionChange` pour afficher l'état de connexion :
 
 ```js
-// mioum.js (après)
+ws.onConnectionChange(({ connected, queueLength }) => {
+  const banner = document.getElementById('offline-banner')
+  banner.hidden = connected
+  banner.textContent = `Hors ligne — ${queueLength} action(s) en attente`
+})
+```
+
+Un banner `#offline-banner` est ajouté à chaque page HTML (`mioum.html`, `crew.html`, `fest.html`).
+
+### 6.4 Orchestrateurs après migration
+
+Les orchestrateurs ne changent pas leur logique d'envoi — `send()` fait la même chose qu'on soit connecté ou non :
+
+```js
 const ws = new WsClient('ws://localhost:3000')
 
 ws.onState('mioum', ({ products, tickets, currentTicket }) => {
@@ -292,6 +337,12 @@ ws.onState('mioum', ({ products, tickets, currentTicket }) => {
   ticketView.refresh(currentTicket, products)
   statsView.refresh(tickets)
   historyView.refresh(tickets)
+})
+
+ws.onConnectionChange(({ connected, queueLength }) => {
+  const banner = document.getElementById('offline-banner')
+  banner.hidden = connected
+  banner.textContent = `Hors ligne — ${queueLength} action(s) en attente`
 })
 
 document.addEventListener('product-delete-requested', e =>
@@ -306,9 +357,9 @@ document.addEventListener('line-add-requested', e =>
 
 Les composants UI (Web Components) ne changent pas.
 
-### 6.3 WebWorker (optionnel)
+### 6.5 WebWorker (optionnel)
 
-Si activé, `WsClient` délègue la connexion WebSocket à `worker.js` via `postMessage`. L'interface `WsClient` reste identique — l'orchestrateur ignore s'il parle à un worker ou directement au WebSocket.
+Si activé, `WsClient` délègue la connexion WebSocket et la gestion de la queue à `worker.js` via `postMessage`. L'interface `WsClient` reste identique pour les orchestrateurs.
 
 ---
 
@@ -318,7 +369,10 @@ Si activé, `WsClient` délègue la connexion WebSocket à `worker.js` via `post
 Le use case lève une `ValidationError` avant d'émettre un event. Le `CommandDispatcher` la catch, envoie l'ack `ok: false` à l'émetteur uniquement. Aucun event n'est stocké.
 
 ### Déconnexion WebSocket
-`WsClient` tente une reconnexion exponentielle (1s, 2s, 4s… jusqu'à 30s). Les commandes en attente pendant la déconnexion sont rejetées immédiatement. À la reconnexion, le snapshot initial remet l'UI à jour.
+`WsClient` tente une reconnexion exponentielle (1s, 2s, 4s… jusqu'à 30s). Les commandes reçues pendant la déconnexion sont queued localement (voir section 6.2). À la reconnexion, le snapshot initial est appliqué puis la queue est rejouée.
+
+### Commande queued rejetée à la reconnexion
+La commande est supprimée de la queue. Une erreur est notifiée via `onConnectionChange`. Le state broadcast final reflète la réalité serveur — l'UI converge automatiquement vers l'état correct.
 
 ### Erreurs serveur inattendues
 Loguées côté serveur. Ack `ok: false` avec message générique côté client. Aucun event partiel n'est écrit.
