@@ -1,14 +1,10 @@
+import { Ticket } from '../../domain/model/Ticket.js'
+import { LineRemovedFromTicket } from '../../domain/events.js'
+
 export class RemoveLineFromTicket {
-  #ticketRepo
-
-  constructor(ticketRepository) {
-    this.#ticketRepo = ticketRepository
-  }
-
-  async execute({ ticketId, lineId }) {
-    const ticket = await this.#ticketRepo.findById(ticketId)
-    if (!ticket) throw new Error(`Ticket not found: ${ticketId}`)
+  execute({ ticket: ticketData, lineId }) {
+    const ticket = Ticket.fromJSON(ticketData)
     ticket.removeLine(lineId)
-    await this.#ticketRepo.save(ticket)
+    return new LineRemovedFromTicket({ ticket: { ...ticket.toJSON(), total: ticket.total } })
   }
 }

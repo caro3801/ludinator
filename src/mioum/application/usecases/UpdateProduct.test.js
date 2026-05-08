@@ -1,49 +1,20 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { UpdateProduct } from './UpdateProduct.js'
-import { InMemoryProductRepository } from '../../adapters/storage/InMemoryProductRepository.js'
+import { ProductUpdated } from '../../domain/events.js'
 import { Product } from '../../domain/model/Product.js'
 
 describe('UpdateProduct', () => {
-  let repo, useCase, product
-
-  beforeEach(async () => {
-    repo = new InMemoryProductRepository()
-    useCase = new UpdateProduct(repo)
-    product = Product.create('Crêpe', 2.50, 'Snacks')
-    await repo.save(product)
+  it('emits ProductUpdated with new values', () => {
+    const product = Product.create('Bière', 3.0, 'Boissons')
+    const event = new UpdateProduct().execute({ product: product.toJSON(), name: 'Bière pression', price: 4.0, category: 'Boissons' })
+    expect(event).toBeInstanceOf(ProductUpdated)
+    expect(event.payload.name).toBe('Bière pression')
+    expect(event.payload.price).toBe(4.0)
   })
 
-  it('updates name only — price and category stay unchanged', async () => {
-    const updated = await useCase.execute({ id: product.id, name: 'Gaufre' })
-    expect(updated.name.value).toBe('Gaufre')
-    expect(updated.price.value).toBe(2.50)
-    expect(updated.category).toBe('Snacks')
-    expect((await repo.findById(product.id)).name.value).toBe('Gaufre')
-  })
-
-  it('updates price only — name stays unchanged', async () => {
-    const updated = await useCase.execute({ id: product.id, price: 3.00 })
-    expect(updated.name.value).toBe('Crêpe')
-    expect(updated.price.value).toBe(3.00)
-    expect((await repo.findById(product.id)).price.value).toBe(3.00)
-  })
-
-  it('updates category only — name and price stay unchanged', async () => {
-    const updated = await useCase.execute({ id: product.id, category: 'Boissons' })
-    expect(updated.category).toBe('Boissons')
-    expect(updated.name.value).toBe('Crêpe')
-    expect(updated.price.value).toBe(2.50)
-  })
-
-  it('updates name, price and category', async () => {
-    const updated = await useCase.execute({ id: product.id, name: 'Gaufre', price: 3.00, category: 'Boissons' })
-    expect(updated.name.value).toBe('Gaufre')
-    expect(updated.price.value).toBe(3.00)
-    expect(updated.category).toBe('Boissons')
-  })
-
-  it('throws Error when product is not found', async () => {
-    await expect(useCase.execute({ id: 'unknown-id', name: 'Gaufre' }))
-      .rejects.toThrow('Product not found: unknown-id')
+  it('throws when name is empty', () => {
+    const product = Product.create('Bière', 3.0, 'Boissons')
+    expect(() => new UpdateProduct().execute({ product: product.toJSON(), name: '', price: 3.0, category: 'Boissons' }))
+      .toThrow()
   })
 })

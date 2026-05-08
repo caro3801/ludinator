@@ -1,15 +1,10 @@
+import { Ticket } from '../../domain/model/Ticket.js'
+import { TicketReopened } from '../../domain/events.js'
+
 export class ReopenTicket {
-  #repo
-
-  constructor(ticketRepository) {
-    this.#repo = ticketRepository
-  }
-
-  async execute({ ticketId }) {
-    const ticket = await this.#repo.findById(ticketId)
-    if (!ticket) throw new Error(`Ticket not found: ${ticketId}`)
+  execute({ ticket: ticketData }) {
+    const ticket = Ticket.fromJSON(ticketData)
     ticket.reopen()
-    await this.#repo.save(ticket)
-    return ticket
+    return new TicketReopened({ ticket: { ...ticket.toJSON(), total: ticket.total } })
   }
 }

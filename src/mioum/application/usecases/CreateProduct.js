@@ -1,15 +1,9 @@
 import { Product } from '../../domain/model/Product.js'
+import { ProductCreated } from '../../domain/events.js'
 
 export class CreateProduct {
-  #repo
-
-  constructor(productRepository) {
-    this.#repo = productRepository
-  }
-
-  async execute({ name, price, category }) {
+  execute({ name, price, category }) {
     const product = Product.create(name, price, category)
-    await this.#repo.save(product)
-    return product
+    return new ProductCreated({ product: product.toJSON() })
   }
 }

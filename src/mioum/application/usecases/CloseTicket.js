@@ -1,15 +1,10 @@
+import { Ticket } from '../../domain/model/Ticket.js'
+import { TicketClosed } from '../../domain/events.js'
+
 export class CloseTicket {
-  #ticketRepo
-
-  constructor(ticketRepository) {
-    this.#ticketRepo = ticketRepository
-  }
-
-  async execute({ ticketId, paymentMethod = null }) {
-    const ticket = await this.#ticketRepo.findById(ticketId)
-    if (!ticket) throw new Error(`Ticket not found: ${ticketId}`)
+  execute({ ticket: ticketData, paymentMethod = null }) {
+    const ticket = Ticket.fromJSON(ticketData)
     ticket.close(paymentMethod)
-    await this.#ticketRepo.save(ticket)
-    return ticket
+    return new TicketClosed({ ticket: { ...ticket.toJSON(), total: ticket.total } })
   }
 }

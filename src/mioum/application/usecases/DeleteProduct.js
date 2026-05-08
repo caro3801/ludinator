@@ -1,11 +1,7 @@
+import { ProductDeleted } from '../../domain/events.js'
+
 export class DeleteProduct {
-  #repo
-
-  constructor(productRepository) {
-    this.#repo = productRepository
-  }
-
-  async execute({ id }) {
-    await this.#repo.delete(id)
+  execute({ productId }) {
+    return new ProductDeleted({ productId })
   }
 }

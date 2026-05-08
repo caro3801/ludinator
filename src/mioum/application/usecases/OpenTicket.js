@@ -1,15 +1,9 @@
 import { Ticket } from '../../domain/model/Ticket.js'
+import { TicketOpened } from '../../domain/events.js'
 
 export class OpenTicket {
-  #ticketRepo
-
-  constructor(ticketRepository) {
-    this.#ticketRepo = ticketRepository
-  }
-
-  async execute() {
+  execute() {
     const ticket = Ticket.create()
-    await this.#ticketRepo.save(ticket)
-    return ticket
+    return new TicketOpened({ ticket: { ...ticket.toJSON(), total: ticket.total } })
   }
 }

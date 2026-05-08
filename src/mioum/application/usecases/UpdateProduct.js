@@ -1,15 +1,10 @@
+import { Product } from '../../domain/model/Product.js'
+import { ProductUpdated } from '../../domain/events.js'
+
 export class UpdateProduct {
-  #repo
-
-  constructor(productRepository) {
-    this.#repo = productRepository
-  }
-
-  async execute({ id, name, price, category }) {
-    const product = await this.#repo.findById(id)
-    if (!product) throw new Error(`Product not found: ${id}`)
+  execute({ product: productData, name, price, category }) {
+    const product = Product.fromJSON(productData)
     product.update({ name, price, category })
-    await this.#repo.save(product)
-    return product
+    return new ProductUpdated({ product: product.toJSON() })
   }
 }

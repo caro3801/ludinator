@@ -1,15 +1,10 @@
+import { Ticket } from '../../domain/model/Ticket.js'
+import { LineDecremented } from '../../domain/events.js'
+
 export class DecrementLineQuantity {
-  #repo
-
-  constructor(ticketRepository) {
-    this.#repo = ticketRepository
-  }
-
-  async execute({ ticketId, lineId }) {
-    const ticket = await this.#repo.findById(ticketId)
-    if (!ticket) throw new Error(`Ticket not found: ${ticketId}`)
+  execute({ ticket: ticketData, lineId }) {
+    const ticket = Ticket.fromJSON(ticketData)
     ticket.decrementLine(lineId)
-    await this.#repo.save(ticket)
-    return ticket
+    return new LineDecremented({ ticket: { ...ticket.toJSON(), total: ticket.total } })
   }
 }
