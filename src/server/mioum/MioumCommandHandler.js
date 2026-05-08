@@ -35,8 +35,10 @@ export class MioumCommandHandler {
         return new DeleteProduct().execute(payload)
       }
 
-      case 'OpenTicket':
+      case 'OpenTicket': {
+        if (state.currentTicket) throw new Error('A ticket is already open')
         return new OpenTicket().execute()
+      }
 
       case 'AddLineToTicket': {
         const ticket = state.currentTicket

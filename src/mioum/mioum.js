@@ -1,79 +1,89 @@
-import { LocalStorageProductRepository } from './adapters/storage/LocalStorageProductRepository.js'
-import { LocalStorageTicketRepository } from './adapters/storage/LocalStorageTicketRepository.js'
 import { CreateProduct } from './application/usecases/CreateProduct.js'
-import { UpdateProduct } from './application/usecases/UpdateProduct.js'
-import { DeleteProduct } from './application/usecases/DeleteProduct.js'
-import { OpenTicket } from './application/usecases/OpenTicket.js'
-import { AddLineToTicket } from './application/usecases/AddLineToTicket.js'
-import { RemoveLineFromTicket } from './application/usecases/RemoveLineFromTicket.js'
-import { CloseTicket } from './application/usecases/CloseTicket.js'
-import { CancelTicket } from './application/usecases/CancelTicket.js'
-import { DecrementLineQuantity } from './application/usecases/DecrementLineQuantity.js'
-import { GetSalesStats } from './application/usecases/GetSalesStats.js'
-import { ReopenTicket } from './application/usecases/ReopenTicket.js'
+import { WsClient } from '../client/WsClient.js'
 import './adapters/ui/MioumProductForm.js'
 import './adapters/ui/MioumProductList.js'
 import './adapters/ui/MioumTicketView.js'
 import './adapters/ui/MioumStatsView.js'
 import './adapters/ui/MioumHistoryView.js'
 
-const productRepo = new LocalStorageProductRepository()
-const ticketRepo = new LocalStorageTicketRepository()
-
-const createProduct = new CreateProduct(productRepo)
-const updateProduct = new UpdateProduct(productRepo)
-const deleteProduct = new DeleteProduct(productRepo)
-const openTicket = new OpenTicket(ticketRepo)
-const addLineToTicket = new AddLineToTicket(ticketRepo, productRepo)
-const removeLineFromTicket = new RemoveLineFromTicket(ticketRepo)
-const closeTicket = new CloseTicket(ticketRepo)
-const cancelTicket = new CancelTicket(ticketRepo)
-const decrementLineQuantity = new DecrementLineQuantity(ticketRepo)
-const getSalesStats = new GetSalesStats(ticketRepo)
-const reopenTicket = new ReopenTicket(ticketRepo)
+const ws = new WsClient('ws://localhost:3000')
 
 const productForm = document.querySelector('mioum-product-form')
 const productList = document.querySelector('mioum-product-list')
 const ticketView = document.querySelector('mioum-ticket-view')
 const statsView = document.querySelector('mioum-stats-view')
 const historyView = document.querySelector('mioum-history-view')
+const offlineBanner = document.getElementById('offline-banner')
 
-productForm.createProductUseCase = createProduct
+productForm.createProductUseCase = {
+  execute: ({ name, price, category }) => {
+    new CreateProduct().execute({ name, price, category })
+    return { name, price, category }
+  },
+}
 
-let currentTicket = null
+function toProductRepo(products) {
+  return {
+    findAll: () => Promise.resolve(products.map(p => ({
+      id: p.id,
+      name: { value: p.name },
+      price: { value: p.price },
+      category: p.category,
+    }))),
+  }
+}
 
-const refreshProducts = () => productList.refresh(productRepo)
-const refreshTicket = () => ticketView.refresh(currentTicket, productRepo)
-const refreshStats = () => statsView.refresh(getSalesStats)
-const refreshHistory = () => historyView.refresh(ticketRepo)
+function computeStats(tickets) {
+  const closed = tickets.filter(t => t.status === 'closed')
+  const ticketCount = closed.length
+  const totalRevenue = Math.round(closed.reduce((sum, t) => sum + (t.total ?? 0), 0) * 100) / 100
+  const averageTicket = ticketCount > 0 ? Math.round((totalRevenue / ticketCount) * 100) / 100 : 0
+  const breakdownMap = new Map()
+  for (const ticket of closed) {
+    for (const line of ticket.lines) {
+      const lineTotal = line.unitPrice * line.quantity
+      const existing = breakdownMap.get(line.productId)
+      if (existing) {
+        existing.quantity += line.quantity
+        existing.revenue += lineTotal
+      } else {
+        breakdownMap.set(line.productId, { productName: line.productName, quantity: line.quantity, revenue: lineTotal })
+      }
+    }
+  }
+  return {
+    ticketCount,
+    totalRevenue,
+    averageTicket,
+    breakdown: [...breakdownMap.values()].map(e => ({ ...e, revenue: Math.round(e.revenue * 100) / 100 })),
+  }
+}
+
+ws.onState('mioum', ({ products, tickets, currentTicket }) => {
+  productList.refresh(toProductRepo(products))
+  const enrichedTicket = currentTicket ? { ...currentTicket, isOpen: currentTicket.status === 'open' } : null
+  ticketView.refresh(enrichedTicket, toProductRepo(products))
+  statsView.refresh({ execute: () => Promise.resolve(computeStats(tickets)) })
+  historyView.refresh({
+    findAll: () => Promise.resolve(tickets.map(t => ({ ...t, isOpen: t.status === 'open' }))),
+  })
+  if (!currentTicket) ws.send('mioum', 'OpenTicket', {}).catch(() => {})
+})
+
+ws.onConnectionChange(({ connected, queueLength }) => {
+  offlineBanner.hidden = connected
+  offlineBanner.textContent = `Hors ligne — ${queueLength} action(s) en attente`
+})
 
 const dispatchError = msg => document.dispatchEvent(new CustomEvent('mioum-error', { detail: { message: msg } }))
 
-const initTicket = async () => {
-  try {
-    const openTickets = await ticketRepo.findByStatus('open')
-    if (openTickets.length > 1) console.warn(`[mioum] ${openTickets.length} tickets ouverts trouvés, utilisation du premier.`)
-    currentTicket = openTickets.length > 0 ? openTickets[0] : await openTicket.execute()
-    refreshTicket()
-  } catch (err) { dispatchError(err.message) }
-}
+document.addEventListener('product-created', e =>
+  ws.send('mioum', 'CreateProduct', e.detail).catch(err => dispatchError(err.message)))
 
-refreshProducts()
-initTicket()
-refreshStats()
-refreshHistory()
-
-document.addEventListener('product-created', () => refreshProducts())
-
-document.addEventListener('product-delete-requested', async e => {
-  try {
-    await deleteProduct.execute({ id: e.detail.productId })
-    refreshProducts()
-  } catch (err) { dispatchError(err.message) }
-})
+document.addEventListener('product-delete-requested', e =>
+  ws.send('mioum', 'DeleteProduct', { productId: e.detail.productId }).catch(err => dispatchError(err.message)))
 
 document.addEventListener('product-edit-requested', async e => {
-  // TODO: replace with inline edit form
   const { productId, name, price, category } = e.detail
   const newName = window.prompt('Nouveau nom du produit :', name)
   if (newName === null) return
@@ -83,64 +93,32 @@ document.addEventListener('product-edit-requested', async e => {
   if (newPriceRaw === null) return
   const newPrice = parseFloat(newPriceRaw)
   if (isNaN(newPrice)) { dispatchError('Prix invalide.'); return }
-  try {
-    await updateProduct.execute({ id: productId, name: newName, price: newPrice, category: newCategory })
-    refreshProducts()
-  } catch (err) { dispatchError(err.message) }
+  ws.send('mioum', 'UpdateProduct', { productId, name: newName, price: newPrice, category: newCategory })
+    .catch(err => dispatchError(err.message))
 })
 
-document.addEventListener('line-add-requested', async e => {
-  try {
-    await addLineToTicket.execute(e.detail)
-    currentTicket = await ticketRepo.findById(e.detail.ticketId)
-    refreshTicket()
-  } catch (err) { dispatchError(err.message) }
-})
+document.addEventListener('line-add-requested', e =>
+  ws.send('mioum', 'AddLineToTicket', { productId: e.detail.productId, quantity: e.detail.quantity ?? 1 })
+    .catch(err => dispatchError(err.message)))
 
-document.addEventListener('line-remove-requested', async e => {
-  try {
-    await removeLineFromTicket.execute(e.detail)
-    currentTicket = await ticketRepo.findById(e.detail.ticketId)
-    refreshTicket()
-  } catch (err) { dispatchError(err.message) }
-})
+document.addEventListener('line-remove-requested', e =>
+  ws.send('mioum', 'RemoveLineFromTicket', { lineId: e.detail.lineId })
+    .catch(err => dispatchError(err.message)))
 
-document.addEventListener('line-decrement-requested', async e => {
-  try {
-    await decrementLineQuantity.execute(e.detail)
-    currentTicket = await ticketRepo.findById(e.detail.ticketId)
-    refreshTicket()
-  } catch (err) { dispatchError(err.message) }
-})
+document.addEventListener('line-decrement-requested', e =>
+  ws.send('mioum', 'DecrementLineQuantity', { lineId: e.detail.lineId })
+    .catch(err => dispatchError(err.message)))
 
-document.addEventListener('ticket-close-requested', async e => {
-  try {
-    await closeTicket.execute(e.detail)
-    refreshStats()
-    refreshHistory()
-    currentTicket = await openTicket.execute()
-    refreshTicket()
-  } catch (err) { dispatchError(err.message) }
-})
+document.addEventListener('ticket-close-requested', e =>
+  ws.send('mioum', 'CloseTicket', { paymentMethod: e.detail.paymentMethod ?? null })
+    .catch(err => dispatchError(err.message)))
 
-document.addEventListener('ticket-cancel-requested', async e => {
-  try {
-    await cancelTicket.execute(e.detail)
-    refreshHistory()
-    currentTicket = await openTicket.execute()
-    refreshTicket()
-  } catch (err) { dispatchError(err.message) }
-})
+document.addEventListener('ticket-cancel-requested', () =>
+  ws.send('mioum', 'CancelTicket', {}).catch(err => dispatchError(err.message)))
 
-document.addEventListener('ticket-reopen-requested', async e => {
-  try {
-    currentTicket = await reopenTicket.execute({ ticketId: e.detail.ticketId })
-    refreshHistory()
-    refreshTicket()
-    const ticketTabBtn = document.querySelector('[data-bs-target="#tab-ticket"]')
-    if (ticketTabBtn) bootstrap.Tab.getOrCreateInstance(ticketTabBtn).show()
-  } catch (err) { dispatchError(err.message) }
-})
+document.addEventListener('ticket-reopen-requested', e =>
+  ws.send('mioum', 'ReopenTicket', { ticketId: e.detail.ticketId })
+    .catch(err => dispatchError(err.message)))
 
 document.addEventListener('mioum-error', e => {
   const alert = document.getElementById('mioum-alert')
