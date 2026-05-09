@@ -4,6 +4,8 @@ import { MioumCommandHandler } from './mioum/MioumCommandHandler.js'
 import { MioumProjection } from './mioum/MioumProjection.js'
 import { CrewCommandHandler } from './crew/CrewCommandHandler.js'
 import { CrewProjection } from './crew/CrewProjection.js'
+import { FestCommandHandler } from './fest/FestCommandHandler.js'
+import { FestProjection } from './fest/FestProjection.js'
 
 export class CommandDispatcher {
   #store
@@ -14,13 +16,16 @@ export class CommandDispatcher {
     this.#store = eventStore ?? new EventStore()
     const mioumProjection = new MioumProjection(this.#store)
     const crewProjection = new CrewProjection(this.#store)
+    const festProjection = new FestProjection(this.#store)
     this.#projections = {
       mioum: mioumProjection,
       crew: crewProjection,
+      fest: festProjection,
     }
     this.#handlers = {
       mioum: new MioumCommandHandler(mioumProjection),
       crew: new CrewCommandHandler(crewProjection),
+      fest: new FestCommandHandler(festProjection),
     }
   }
 
