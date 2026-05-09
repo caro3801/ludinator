@@ -1,16 +1,10 @@
-import { LocalStorageActivityRepository } from './adapters/storage/LocalStorageActivityRepository.js'
-import { LocalStorageEntryLogRepository } from './adapters/storage/LocalStorageEntryLogRepository.js'
+import { Activity } from './domain/model/Activity.js'
+import { EntryLog } from './domain/model/EntryLog.js'
 import { CreateActivity } from './application/usecases/CreateActivity.js'
 import { UpdateActivityName } from './application/usecases/UpdateActivityName.js'
-import { DeleteActivity } from './application/usecases/DeleteActivity.js'
 import { AddSlotToActivity } from './application/usecases/AddSlotToActivity.js'
 import { RegisterToActivity } from './application/usecases/RegisterToActivity.js'
-import { CancelRegistration } from './application/usecases/CancelRegistration.js'
-import { AddSubCounter } from './application/usecases/AddSubCounter.js'
-import { RemoveSubCounter } from './application/usecases/RemoveSubCounter.js'
-import { RecordSubCounterEntries } from './application/usecases/RecordSubCounterEntries.js'
-import { UpdateSubCounterBatch } from './application/usecases/UpdateSubCounterBatch.js'
-import { DeleteSubCounterBatch } from './application/usecases/DeleteSubCounterBatch.js'
+import { WsClient } from '../client/WsClient.js'
 import './adapters/ui/FestActivityForm.js'
 import './adapters/ui/FestActivityList.js'
 import './adapters/ui/FestAddSlotForm.js'
@@ -20,9 +14,7 @@ import './adapters/ui/FestAttendanceChart.js'
 import './adapters/ui/FestProgrammeView.js'
 
 const EDITION_ID = 'edition-2024'
-
-const activityRepo = new LocalStorageActivityRepository()
-const entryLogRepo = new LocalStorageEntryLogRepository()
+const ws = new WsClient('ws://localhost:3000')
 
 const activityForm = document.querySelector('fest-activity-form')
 const activityList = document.querySelector('fest-activity-list')
@@ -31,57 +23,98 @@ const entryForm = document.querySelector('fest-entry-form')
 const entryCounter = document.querySelector('fest-entry-counter')
 const attendanceChart = document.querySelector('fest-attendance-chart')
 const programmeView = document.querySelector('fest-programme-view')
+const offlineBanner = document.getElementById('offline-banner')
 
-activityForm.createActivityUseCase = new CreateActivity(activityRepo)
-addSlotForm.addSlotToActivityUseCase = new AddSlotToActivity(activityRepo)
-entryForm.registerEntryUseCase = new RegisterToActivity(activityRepo)
-entryForm.cancelRegistrationUseCase = new CancelRegistration(activityRepo)
-entryCounter.addSubCounterUseCase = new AddSubCounter(entryLogRepo)
-entryCounter.removeSubCounterUseCase = new RemoveSubCounter(entryLogRepo)
-entryCounter.recordSubCounterEntriesUseCase = new RecordSubCounterEntries(entryLogRepo)
-entryCounter.updateSubCounterBatchUseCase = new UpdateSubCounterBatch(entryLogRepo)
-entryCounter.deleteSubCounterBatchUseCase = new DeleteSubCounterBatch(entryLogRepo)
+let currentActivities = []
+
+activityForm.createActivityUseCase = {
+  execute: ({ name, location = null }) => {
+    new CreateActivity().execute({ name, location })
+    return ws.send('fest', 'CreateActivity', { name, location })
+  },
+}
+
+addSlotForm.addSlotToActivityUseCase = {
+  execute: ({ activityId, day, startTime, endTime, min = null, max = null }) => {
+    const activity = currentActivities.find(a => a.id === activityId)
+    if (activity) new AddSlotToActivity().execute({ activity, day, startTime, endTime, min, max })
+    return ws.send('fest', 'AddSlotToActivity', { activityId, day, startTime, endTime, min, max })
+  },
+}
+
+entryForm.registerEntryUseCase = {
+  execute: ({ activityId, slotId, personName }) => {
+    const activity = currentActivities.find(a => a.id === activityId)
+    if (!activity) throw new Error(`Activity not found: ${activityId}`)
+    const event = new RegisterToActivity().execute({ activity, slotId, personName })
+    ws.send('fest', 'RegisterToActivity', { activityId, slotId, personName })
+    const slot = event.payload.slots.find(s => s.id === slotId)
+    return slot.registrations[slot.registrations.length - 1]
+  },
+}
+
+entryForm.cancelRegistrationUseCase = {
+  execute: ({ activityId, slotId, registrationId }) =>
+    ws.send('fest', 'CancelRegistration', { activityId, slotId, registrationId }),
+}
+
 entryCounter.editionId = EDITION_ID
-
-const refreshActivities = async () => {
-  const activities = await activityRepo.findAll()
-  activityList.refresh(activityRepo)
-  addSlotForm.activities = activities
-  programmeView.refresh(activityRepo)
+entryCounter.addSubCounterUseCase = {
+  execute: ({ label }) => ws.send('fest', 'AddSubCounter', { label }),
+}
+entryCounter.removeSubCounterUseCase = {
+  execute: ({ subCounterId }) => ws.send('fest', 'RemoveSubCounter', { subCounterId }),
+}
+entryCounter.recordSubCounterEntriesUseCase = {
+  execute: ({ subCounterId, adults, children, families }) =>
+    ws.send('fest', 'RecordSubCounterEntries', { subCounterId, adults, children, families }),
+}
+entryCounter.updateSubCounterBatchUseCase = {
+  execute: ({ subCounterId, batchId, adults, children, families }) =>
+    ws.send('fest', 'UpdateSubCounterBatch', { subCounterId, batchId, adults, children, families }),
+}
+entryCounter.deleteSubCounterBatchUseCase = {
+  execute: ({ subCounterId, batchId }) =>
+    ws.send('fest', 'DeleteSubCounterBatch', { subCounterId, batchId }),
 }
 
-const refreshEntries = async () => {
-  const log = await entryLogRepo.findByEdition(EDITION_ID)
-  entryCounter.refresh(log)
-  attendanceChart.refresh(log)
-}
+ws.onState('fest', ({ activities, entryLog }) => {
+  const domainActivities = activities.map(a => Activity.fromJSON(a))
+  const domainEntryLog = entryLog ? EntryLog.fromJSON(entryLog) : null
+  currentActivities = domainActivities
 
-refreshActivities()
-refreshEntries()
+  activityList.refresh({ findAll: () => Promise.resolve(domainActivities) })
+  addSlotForm.activities = domainActivities
+  programmeView.refresh({ findAll: () => Promise.resolve(domainActivities) })
+  entryCounter.refresh(domainEntryLog)
+  attendanceChart.refresh(domainEntryLog)
+})
 
-document.addEventListener('activity-created', refreshActivities)
-document.addEventListener('slot-added-to-activity', refreshActivities)
-document.addEventListener('entry-registered', refreshActivities)
-document.addEventListener('entries-updated', refreshEntries)
+ws.onConnectionChange(({ connected, queueLength }) => {
+  offlineBanner.hidden = connected
+  offlineBanner.textContent = `Hors ligne — ${queueLength} action(s) en attente`
+})
+
+const showError = msg => document.dispatchEvent(new CustomEvent('fest-error', { detail: { message: msg } }))
 
 document.addEventListener('activity-rename-requested', e => {
   const name = prompt('Nouveau nom :', e.detail.name)
   if (!name) return
-  new UpdateActivityName(activityRepo).execute({ activityId: e.detail.activityId, name })
-    .then(refreshActivities)
-    .catch(err => showError(err.message))
+  const activity = currentActivities.find(a => a.id === e.detail.activityId)
+  try {
+    if (activity) new UpdateActivityName().execute({ activity, name })
+  } catch (err) {
+    showError(err.message)
+    return
+  }
+  ws.send('fest', 'UpdateActivityName', { activityId: e.detail.activityId, name }).catch(err => showError(err.message))
 })
 
-document.addEventListener('activity-delete-requested', async e => {
-  await new DeleteActivity(activityRepo).execute({ activityId: e.detail.activityId })
-  refreshActivities()
-})
+document.addEventListener('activity-delete-requested', e =>
+  ws.send('fest', 'DeleteActivity', { activityId: e.detail.activityId }).catch(err => showError(err.message)))
 
-document.addEventListener('add-entry-requested', e => {
-  entryForm.open({ activityId: e.detail.activityId, slotId: e.detail.slotId, registrations: e.detail.registrations })
-})
-
-document.addEventListener('registration-cancelled', refreshActivities)
+document.addEventListener('add-entry-requested', e =>
+  entryForm.open({ activityId: e.detail.activityId, slotId: e.detail.slotId, registrations: e.detail.registrations }))
 
 document.addEventListener('fest-error', e => {
   const alert = document.getElementById('fest-alert')
@@ -89,7 +122,3 @@ document.addEventListener('fest-error', e => {
   alert.hidden = false
   setTimeout(() => { alert.hidden = true }, 4000)
 })
-
-function showError(message) {
-  document.dispatchEvent(new CustomEvent('fest-error', { detail: { message } }))
-}
