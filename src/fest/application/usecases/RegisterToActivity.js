@@ -1,15 +1,10 @@
-import { ValidationError } from '../../domain/errors/ValidationError.js'
+import { Activity } from '../../domain/model/Activity.js'
+import { RegistrationAdded } from '../../domain/events.js'
 
 export class RegisterToActivity {
-  #repo
-  constructor(repo) { this.#repo = repo }
-
-  async execute({ activityId, slotId, personName }) {
-    const activity = await this.#repo.findById(activityId)
-    if (!activity) throw new ValidationError(`Activity not found: ${activityId}`)
-    const slot = activity.findSlot(slotId)
-    const reg = slot.addRegistration(personName)
-    await this.#repo.save(activity)
-    return reg
+  execute({ activity: activityData, slotId, personName }) {
+    const activity = Activity.fromJSON(activityData)
+    activity.findSlot(slotId).addRegistration(personName)
+    return new RegistrationAdded({ activity: activity.toJSON() })
   }
 }

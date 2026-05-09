@@ -1,10 +1,10 @@
-export class DeleteSubCounterBatch {
-  #repo
-  constructor(repo) { this.#repo = repo }
+import { EntryLog } from '../../domain/model/EntryLog.js'
+import { SubCounterBatchDeleted } from '../../domain/events.js'
 
-  async execute({ editionId, subCounterId, batchId }) {
-    const log = await this.#repo.findByEdition(editionId)
+export class DeleteSubCounterBatch {
+  execute({ entryLog: entryLogData, subCounterId, batchId }) {
+    const log = EntryLog.fromJSON(entryLogData)
     log.findSubCounter(subCounterId).removeBatch(batchId)
-    await this.#repo.save(log)
+    return new SubCounterBatchDeleted({ entryLog: log.toJSON() })
   }
 }

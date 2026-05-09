@@ -1,10 +1,10 @@
-export class UpdateSubCounterBatch {
-  #repo
-  constructor(repo) { this.#repo = repo }
+import { EntryLog } from '../../domain/model/EntryLog.js'
+import { SubCounterBatchUpdated } from '../../domain/events.js'
 
-  async execute({ editionId, subCounterId, batchId, adults, children, families }) {
-    const log = await this.#repo.findByEdition(editionId)
+export class UpdateSubCounterBatch {
+  execute({ entryLog: entryLogData, subCounterId, batchId, adults, children, families }) {
+    const log = EntryLog.fromJSON(entryLogData)
     log.findSubCounter(subCounterId).updateBatch(batchId, { adults, children, families })
-    await this.#repo.save(log)
+    return new SubCounterBatchUpdated({ entryLog: log.toJSON() })
   }
 }

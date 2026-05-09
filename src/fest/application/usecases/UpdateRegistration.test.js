@@ -1,28 +1,19 @@
 import { describe, it, expect } from 'vitest'
 import { UpdateRegistration } from './UpdateRegistration.js'
+import { RegistrationUpdated } from '../../domain/events.js'
 import { Activity } from '../../domain/model/Activity.js'
 import { TimeWindow } from '../../domain/model/TimeWindow.js'
-import { InMemoryActivityRepository } from '../../adapters/storage/InMemoryActivityRepository.js'
 
 describe('UpdateRegistration', () => {
-  const seed = async (repo) => {
+  it('emits RegistrationUpdated with updated name', () => {
     const a = Activity.create('Quiz')
     a.addSlot(new TimeWindow('saturday', '10:00', '12:00'))
     const slot = a.slots[0]
-    const reg = slot.addRegistration('Alice')
-    await repo.save(a)
-    return { activity: a, slot, reg }
-  }
+    slot.addRegistration('Alice')
+    const regId = a.toJSON().slots[0].registrations[0].id
 
-  it('updates the registration name', async () => {
-    const repo = new InMemoryActivityRepository()
-    const { activity, slot, reg } = await seed(repo)
-    await new UpdateRegistration(repo).execute({ activityId: activity.id, slotId: slot.id, registrationId: reg.id, personName: 'Alice M.' })
-    const found = await repo.findById(activity.id)
-    expect(found.slots[0].registrations[0].personName).toBe('Alice M.')
-  })
-
-  it('throws when activity is not found', async () => {
-    await expect(new UpdateRegistration(new InMemoryActivityRepository()).execute({ activityId: 'nope', slotId: 'x', registrationId: 'y', personName: 'A' })).rejects.toThrow()
+    const event = new UpdateRegistration().execute({ activity: a.toJSON(), slotId: slot.id, registrationId: regId, personName: 'Alice M.' })
+    expect(event).toBeInstanceOf(RegistrationUpdated)
+    expect(event.payload.slots[0].registrations[0].personName).toBe('Alice M.')
   })
 })
