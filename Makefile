@@ -1,6 +1,8 @@
 .PHONY: install dev test test-watch build deploy
 
-# — Deploy config — override these with environment variables or a .env.make file
+-include .env.make
+
+# — Deploy config — valeurs par défaut, surcharger dans .env.make (non commité)
 DEPLOY_HOST ?= monserveur.o2switch.net
 DEPLOY_USER ?= monuser
 DEPLOY_PATH ?= ~/www/ludinator
