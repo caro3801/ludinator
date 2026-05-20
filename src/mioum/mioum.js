@@ -6,7 +6,8 @@ import './adapters/ui/MioumTicketView.js'
 import './adapters/ui/MioumStatsView.js'
 import './adapters/ui/MioumHistoryView.js'
 
-const ws = new WsClient('ws://localhost:3000')
+const wsPort = 3000
+const ws = new WsClient(`ws://${window.location.hostname}:${wsPort}`)
 
 const productForm = document.querySelector('mioum-product-form')
 const productList = document.querySelector('mioum-product-list')

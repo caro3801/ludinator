@@ -5,6 +5,7 @@ const clients = new Set()
 
 Bun.serve({
   port: 3000,
+  hostname: '0.0.0.0',
   fetch(req, server) {
     if (server.upgrade(req)) return
     return new Response('ludinator server', { status: 200 })
@@ -27,4 +28,4 @@ Bun.serve({
   },
 })
 
-console.log('ludinator server running on ws://localhost:3000')
+console.log('ludinator server running on ws://0.0.0.0:3000')

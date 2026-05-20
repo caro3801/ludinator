@@ -21,7 +21,8 @@ import './adapters/ui/CrewPlanningView.js'
 import './adapters/ui/CrewStatsView.js'
 
 const EDITION_ID = 'edition-2024'
-const ws = new WsClient('ws://localhost:3000')
+const wsPort = 3000
+const ws = new WsClient(`ws://${window.location.hostname}:${wsPort}`)
 
 const volunteerForm = document.querySelector('crew-volunteer-form')
 const volunteerList = document.querySelector('crew-volunteer-list')

@@ -14,7 +14,8 @@ import './adapters/ui/FestAttendanceChart.js'
 import './adapters/ui/FestProgrammeView.js'
 
 const EDITION_ID = 'edition-2024'
-const ws = new WsClient('ws://localhost:3000')
+const wsPort = 3000
+const ws = new WsClient(`ws://${window.location.hostname}:${wsPort}`)
 
 const activityForm = document.querySelector('fest-activity-form')
 const activityList = document.querySelector('fest-activity-list')

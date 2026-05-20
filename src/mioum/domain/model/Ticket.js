@@ -39,6 +39,7 @@ class TicketLine {
       productName: this.#productName,
       unitPrice: this.#unitPrice,
       quantity: this.#quantity,
+      subtotal: this.#unitPrice * this.#quantity,
     }
   }
 
