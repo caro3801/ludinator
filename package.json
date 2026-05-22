@@ -8,6 +8,8 @@
     "server": "bun run src/server/server.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:server": "bun test src/server/",
+    "test:all": "vitest run --exclude='**/server/**' && bun test src/server/",
     "type-check": "tsc --noEmit",
     "type-check:watch": "tsc --noEmit --watch"
   },
