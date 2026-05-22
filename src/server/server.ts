@@ -45,22 +45,22 @@ Bun.serve({
         switch (cmd.action) {
           case 'CheckAdminSetup':
             const checkResp = await adminHandler.handleCheckAdminSetup()
-            ws.send(JSON.stringify(checkResp))
+            ws.send(JSON.stringify({ id: cmd.id, ok: true, ...checkResp }))
             return
           case 'SetupAdmin':
             const setupResp = await adminHandler.handleSetupAdmin(payload.password)
-            ws.send(JSON.stringify(setupResp))
+            ws.send(JSON.stringify({ id: cmd.id, ok: true, ...setupResp }))
             return
           case 'AdminLogin':
             const loginResp = await adminHandler.handleAdminLogin(payload.password)
-            ws.send(JSON.stringify(loginResp))
+            ws.send(JSON.stringify({ id: cmd.id, ok: true, ...loginResp }))
             return
           case 'ResetModule':
             const resetResp = await adminHandler.handleResetModule(
               payload.module,
               payload.password
             )
-            ws.send(JSON.stringify(resetResp))
+            ws.send(JSON.stringify({ id: cmd.id, ok: true, ...resetResp }))
             // Après un reset, recharger les snapshots pour tous les clients
             const snapshots = await dispatcher.snapshots()
             for (const client of clients) {
