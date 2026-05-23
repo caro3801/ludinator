@@ -136,7 +136,7 @@ export class AdminPanel extends HTMLElement {
 
   async #checkAdminSetup() {
     try {
-      const resp = await this.#ws.send('admin', 'CheckAdminSetup', {})
+      const resp = await this.#ws.send('admin', 'CheckAdminSetup', {}) as { status: 'needs_setup' | 'ready' }
       this.#needsSetup = resp.status === 'needs_setup'
       this.innerHTML = this.#render()
       this.#setupEventListeners()
@@ -156,7 +156,7 @@ export class AdminPanel extends HTMLElement {
     }
 
     try {
-      const resp = await this.#ws.send('admin', 'SetupAdmin', { password })
+      const resp = await this.#ws.send('admin', 'SetupAdmin', { password }) as { status: 'ok' }
       if (resp.status === 'ok') {
         this.#needsSetup = false
         this.#showToast('Configuration admin terminée', 'success')
@@ -170,7 +170,7 @@ export class AdminPanel extends HTMLElement {
 
   async #handleLogin(password: string) {
     try {
-      const resp = await this.#ws.send('admin', 'AdminLogin', { password })
+      const resp = await this.#ws.send('admin', 'AdminLogin', { password }) as { status: 'ok' | 'invalid' }
       if (resp.status === 'ok') {
         this.#authenticated = true
         localStorage.setItem(this.#storageKey, 'true')
@@ -189,7 +189,7 @@ export class AdminPanel extends HTMLElement {
     const password = localStorage.getItem(this.#passwordStorageKey) || ''
 
     try {
-      const resp = await this.#ws.send('admin', 'ResetModule', { module, password })
+      const resp = await this.#ws.send('admin', 'ResetModule', { module, password }) as { status: 'ok' | 'invalid_password' }
       if (resp.status === 'ok') {
         this.#showToast(`Module ${module} réinitialisé`, 'success')
       } else {
@@ -204,7 +204,7 @@ export class AdminPanel extends HTMLElement {
     const password = localStorage.getItem(this.#passwordStorageKey) || ''
 
     try {
-      const resp = await this.#ws.send('admin', 'ResetModule', { module, password })
+      const resp = await this.#ws.send('admin', 'ResetModule', { module, password }) as { status: 'ok' | 'invalid_password' }
       if (resp.status === 'ok') {
         this.#showToast(`Module ${module} réinitialisé`, 'success')
         // Redirect to the module page

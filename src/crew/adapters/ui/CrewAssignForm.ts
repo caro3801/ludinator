@@ -1,18 +1,43 @@
+interface UseCase<T, R> {
+  execute(params: T): Promise<R>
+}
+
+interface Volunteer {
+  id: string
+  name: { value: string }
+}
+
+interface Post {
+  id: string
+  name: { value: string }
+  slots: { id: string, window: { day: string, startTime: string, endTime: string } }[]
+}
+
+interface AssignmentParams {
+  volunteerId: string
+  slotId: string
+  editionId: string | null
+}
+
+interface Assignment {
+  id: string
+}
+
 export class CrewAssignForm extends HTMLElement {
-  #useCase = null
-  #volunteers = []
-  #posts = []
-  #editionId = null
+  #useCase: UseCase<AssignmentParams, Assignment> | null = null
+  #volunteers: Volunteer[] = []
+  #posts: Post[] = []
+  #editionId: string | null = null
 
-  set assignVolunteerUseCase(uc) { this.#useCase = uc }
-  set editionId(id) { this.#editionId = id }
+  set assignVolunteerUseCase(uc: UseCase<AssignmentParams, Assignment> | null) { this.#useCase = uc }
+  set editionId(id: string | null) { this.#editionId = id }
 
-  set volunteers(list) {
+  set volunteers(list: Volunteer[]) {
     this.#volunteers = list
     this.#render()
   }
 
-  set posts(list) {
+  set posts(list: Post[]) {
     this.#posts = list
     this.#render()
   }
@@ -35,13 +60,24 @@ export class CrewAssignForm extends HTMLElement {
         <button type="submit">Affecter</button>
       </form>
     `
-    this.querySelector('select[name="postId"]').addEventListener('change', e => {
-      this.querySelector('select[name="slotId"]').innerHTML = this.#slotsFor(e.target.value)
-    })
-    this.querySelector('form').addEventListener('submit', e => this.#onSubmit(e))
+    const postSelect = this.querySelector<HTMLSelectElement>('select[name="postId"]')
+    const slotSelect = this.querySelector<HTMLSelectElement>('select[name="slotId"]')
+    const form = this.querySelector<HTMLFormElement>('form')
+    
+    if (postSelect && slotSelect) {
+      postSelect.addEventListener('change', (e: Event) => {
+        const target = e.target as HTMLSelectElement
+        if (slotSelect) {
+          slotSelect.innerHTML = this.#slotsFor(target.value)
+        }
+      })
+    }
+    if (form) {
+      form.addEventListener('submit', (e: Event) => this.#onSubmit(e))
+    }
   }
 
-  #slotsFor(postId) {
+  #slotsFor(postId: string | undefined): string {
     const post = this.#posts.find(p => p.id === postId)
     if (!post?.slots?.length) return ''
     return post.slots.map(s =>
@@ -49,22 +85,36 @@ export class CrewAssignForm extends HTMLElement {
     ).join('')
   }
 
-  selectSlot({ postId, slotId }) {
-    const postSelect = this.querySelector('select[name="postId"]')
-    postSelect.value = postId
-    postSelect.dispatchEvent(new Event('change'))
-    this.querySelector('select[name="slotId"]').value = slotId
+  selectSlot({ postId, slotId }: { postId: string, slotId: string }): void {
+    const postSelect = this.querySelector<HTMLSelectElement>('select[name="postId"]')
+    if (postSelect) {
+      postSelect.value = postId
+      postSelect.dispatchEvent(new Event('change'))
+    }
+    const slotSelect = this.querySelector<HTMLSelectElement>('select[name="slotId"]')
+    if (slotSelect) {
+      slotSelect.value = slotId
+    }
   }
 
-  async #onSubmit(e) {
+  async #onSubmit(e: Event) {
     e.preventDefault()
-    const volunteerId = this.querySelector('[name="volunteerId"]').value
-    const slotId = this.querySelector('[name="slotId"]').value
+    const volunteerSelect = this.querySelector<HTMLSelectElement>('[name="volunteerId"]')
+    const slotSelect = this.querySelector<HTMLSelectElement>('[name="slotId"]')
+    
+    if (!volunteerSelect || !slotSelect) return
+    
+    const volunteerId = volunteerSelect.value
+    const slotId = slotSelect.value
+    
+    if (!this.#useCase) return
+    
     try {
       const assignment = await this.#useCase.execute({ volunteerId, slotId, editionId: this.#editionId })
-      this.dispatchEvent(new CustomEvent('volunteer-assigned', { detail: assignment, bubbles: true }))
+      this.dispatchEvent(new CustomEvent<Assignment>('volunteer-assigned', { detail: assignment, bubbles: true }))
     } catch (err) {
-      this.dispatchEvent(new CustomEvent('crew-error', { detail: { message: err.message }, bubbles: true }))
+      const error = err as Error
+      this.dispatchEvent(new CustomEvent<{ message: string }>('crew-error', { detail: { message: error.message }, bubbles: true }))
     }
   }
 }

@@ -88,7 +88,7 @@ export class WsClient {
 
     this.#ws.onmessage = ({ data }: MessageEvent<string>) => {
       const msg: IncomingMessage = JSON.parse(data)
-      if (msg.type === 'state') {
+      if ('type' in msg && msg.type === 'state') {
         const handlers = this.#stateHandlers[msg.module] ?? []
         for (const h of handlers) h(msg.data)
         return
@@ -100,7 +100,7 @@ export class WsClient {
         const ackCallbacks = this.#pendingAcks.get(ackMsg.id)
         if (ackCallbacks) {
           this.#pendingAcks.delete(ackMsg.id)
-          ackMsg.ok ? ackCallbacks.resolve() : ackCallbacks.reject(new Error(ackMsg.error))
+          ackMsg.ok ? ackCallbacks.resolve() : ackCallbacks.reject(new Error(ackMsg.error ?? 'Unknown error'))
           return
         }
         
@@ -115,7 +115,7 @@ export class WsClient {
               const { id, ok, ...responseData } = ackMsg as any
               responseCallbacks.resolve(responseData)
             } else {
-              responseCallbacks.reject(new Error(ackMsg.error))
+              responseCallbacks.reject(new Error(ackMsg.error ?? 'Unknown error'))
             }
           }
         }

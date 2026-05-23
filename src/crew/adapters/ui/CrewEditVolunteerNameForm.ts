@@ -1,8 +1,27 @@
-export class CrewEditVolunteerNameForm extends HTMLElement {
-  #useCase = null
-  #volunteerId = null
+interface UseCase<T, R> {
+  execute(params: T): Promise<R>
+}
 
-  set updateVolunteerNameUseCase(uc) { this.#useCase = uc }
+interface UpdateVolunteerNameParams {
+  volunteerId: string
+  name: string
+}
+
+interface Volunteer {
+  id: string
+  name: { value: string }
+}
+
+interface OpenParams {
+  volunteerId: string
+  name: string
+}
+
+export class CrewEditVolunteerNameForm extends HTMLElement {
+  #useCase: UseCase<UpdateVolunteerNameParams, Volunteer> | null = null
+  #volunteerId: string | null = null
+
+  set updateVolunteerNameUseCase(uc: UseCase<UpdateVolunteerNameParams, Volunteer> | null) { this.#useCase = uc }
 
   connectedCallback() {
     this.hidden = true
@@ -13,27 +32,38 @@ export class CrewEditVolunteerNameForm extends HTMLElement {
         <button type="button" data-action="cancel">Annuler</button>
       </form>
     `
-    this.addEventListener('click', e => {
-      if (e.target.closest('button[data-action="cancel"]')) this.hidden = true
+    this.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLElement
+      if (target.closest('button[data-action="cancel"]')) this.hidden = true
     })
-    this.querySelector('form').addEventListener('submit', e => this.#onSubmit(e))
+    const form = this.querySelector<HTMLFormElement>('form')
+    if (form) {
+      form.addEventListener('submit', (e: Event) => this.#onSubmit(e))
+    }
   }
 
-  open({ volunteerId, name }) {
+  open({ volunteerId, name }: OpenParams): void {
     this.#volunteerId = volunteerId
-    this.querySelector('input[name="name"]').value = name
+    const nameInput = this.querySelector<HTMLInputElement>('input[name="name"]')
+    if (nameInput) {
+      nameInput.value = name
+    }
     this.hidden = false
   }
 
-  async #onSubmit(e) {
+  async #onSubmit(e: Event) {
     e.preventDefault()
-    const name = this.querySelector('[name="name"]').value.trim()
+    const nameInput = this.querySelector<HTMLInputElement>('[name="name"]')
+    if (!nameInput || !this.#useCase || !this.#volunteerId) return
+    
+    const name = nameInput.value.trim()
     try {
       const volunteer = await this.#useCase.execute({ volunteerId: this.#volunteerId, name })
-      this.dispatchEvent(new CustomEvent('volunteer-name-updated', { detail: volunteer, bubbles: true }))
+      this.dispatchEvent(new CustomEvent<Volunteer>('volunteer-name-updated', { detail: volunteer, bubbles: true }))
       this.hidden = true
     } catch (err) {
-      this.dispatchEvent(new CustomEvent('crew-error', { detail: { message: err.message }, bubbles: true }))
+      const error = err as Error
+      this.dispatchEvent(new CustomEvent<{ message: string }>('crew-error', { detail: { message: error.message }, bubbles: true }))
     }
   }
 }

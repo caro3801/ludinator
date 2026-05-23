@@ -1,9 +1,31 @@
-export class CrewEditSlotForm extends HTMLElement {
-  #useCase = null
-  #postId = null
-  #slotId = null
+interface UseCase<T, R> {
+  execute(params: T): Promise<R>
+}
 
-  set updateSlotInPostUseCase(uc) { this.#useCase = uc }
+interface Slot {
+  id: string
+  window: { day: string, startTime: string, endTime: string }
+}
+
+interface UpdateSlotParams {
+  postId: string
+  slotId: string
+  day: string
+  startTime: string
+  endTime: string
+}
+
+interface OpenSlotParams {
+  postId: string
+  slot: Slot
+}
+
+export class CrewEditSlotForm extends HTMLElement {
+  #useCase: UseCase<UpdateSlotParams, Slot> | null = null
+  #postId: string | null = null
+  #slotId: string | null = null
+
+  set updateSlotInPostUseCase(uc: UseCase<UpdateSlotParams, Slot> | null) { this.#useCase = uc }
 
   connectedCallback() {
     this.hidden = true
@@ -16,34 +38,51 @@ export class CrewEditSlotForm extends HTMLElement {
         <button type="button" data-action="cancel">Annuler</button>
       </form>
     `
-    this.addEventListener('click', e => {
-      if (e.target.closest('button[data-action="cancel"]')) this.#close()
+    this.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLElement
+      if (target.closest('button[data-action="cancel"]')) this.#close()
     })
-    this.querySelector('form').addEventListener('submit', e => this.#onSubmit(e))
+    const form = this.querySelector<HTMLFormElement>('form')
+    if (form) {
+      form.addEventListener('submit', (e: Event) => this.#onSubmit(e))
+    }
   }
 
-  open({ postId, slot }) {
+  open({ postId, slot }: OpenSlotParams): void {
     this.#postId = postId
     this.#slotId = slot.id
-    this.querySelector('input[name="day"]').value = slot.window.day
-    this.querySelector('input[name="startTime"]').value = slot.window.startTime
-    this.querySelector('input[name="endTime"]').value = slot.window.endTime
+    const dayInput = this.querySelector<HTMLInputElement>('input[name="day"]')
+    const startTimeInput = this.querySelector<HTMLInputElement>('input[name="startTime"]')
+    const endTimeInput = this.querySelector<HTMLInputElement>('input[name="endTime"]')
+    
+    if (dayInput && startTimeInput && endTimeInput) {
+      dayInput.value = slot.window.day
+      startTimeInput.value = slot.window.startTime
+      endTimeInput.value = slot.window.endTime
+    }
     this.hidden = false
   }
 
-  #close() { this.hidden = true }
+  #close(): void { this.hidden = true }
 
-  async #onSubmit(e) {
+  async #onSubmit(e: Event) {
     e.preventDefault()
-    const day = this.querySelector('[name="day"]').value.trim()
-    const startTime = this.querySelector('[name="startTime"]').value
-    const endTime = this.querySelector('[name="endTime"]').value
+    const dayInput = this.querySelector<HTMLInputElement>('[name="day"]')
+    const startTimeInput = this.querySelector<HTMLInputElement>('[name="startTime"]')
+    const endTimeInput = this.querySelector<HTMLInputElement>('[name="endTime"]')
+    
+    if (!dayInput || !startTimeInput || !endTimeInput || !this.#useCase || !this.#postId || !this.#slotId) return
+    
+    const day = dayInput.value.trim()
+    const startTime = startTimeInput.value
+    const endTime = endTimeInput.value
     try {
       const slot = await this.#useCase.execute({ postId: this.#postId, slotId: this.#slotId, day, startTime, endTime })
-      this.dispatchEvent(new CustomEvent('slot-updated', { detail: slot, bubbles: true }))
+      this.dispatchEvent(new CustomEvent<Slot>('slot-updated', { detail: slot, bubbles: true }))
       this.#close()
     } catch (err) {
-      this.dispatchEvent(new CustomEvent('crew-error', { detail: { message: err.message }, bubbles: true }))
+      const error = err as Error
+      this.dispatchEvent(new CustomEvent<{ message: string }>('crew-error', { detail: { message: error.message }, bubbles: true }))
     }
   }
 }

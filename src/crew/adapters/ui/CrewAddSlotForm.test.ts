@@ -2,19 +2,33 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import './CrewAddSlotForm'
 
-const makeUseCase = (result) => ({ execute: vi.fn().mockResolvedValue(result) })
-const makeFailingUseCase = (msg) => ({ execute: vi.fn().mockRejectedValue(new Error(msg)) })
+interface UseCase<T, R> {
+  execute(params: T): Promise<R>
+}
 
-const posts = [
+interface Post {
+  id: string
+  name: { value: string }
+}
+
+const makeUseCase = <T, R>(result: R): UseCase<T, R> => ({ execute: vi.fn().mockResolvedValue(result) } as UseCase<T, R>)
+const makeFailingUseCase = (msg: string): UseCase<unknown, never> => ({ execute: vi.fn().mockRejectedValue(new Error(msg)) } as UseCase<unknown, never>)
+
+const posts: Post[] = [
   { id: 'post-1', name: { value: 'Accueil' } },
   { id: 'post-2', name: { value: 'Bar' } },
 ]
 
+interface CrewAddSlotForm extends HTMLElement {
+  posts: Post[]
+  addSlotToPostUseCase: UseCase<{ postId: string, day: string, startTime: string, endTime: string }, { id: string }>
+}
+
 describe('CrewAddSlotForm', () => {
-  let el
+  let el: CrewAddSlotForm
 
   beforeEach(() => {
-    el = document.createElement('crew-add-slot-form')
+    el = document.createElement('crew-add-slot-form') as CrewAddSlotForm
     document.body.appendChild(el)
     el.posts = posts
   })
@@ -34,14 +48,20 @@ describe('CrewAddSlotForm', () => {
   })
 
   it('calls the use case with all fields on submit', async () => {
-    const useCase = makeUseCase({ id: 'slot-1' })
+    interface Slot { id: string }
+    const useCase = makeUseCase<{ postId: string, day: string, startTime: string, endTime: string }, Slot>({ id: 'slot-1' })
     el.addSlotToPostUseCase = useCase
 
-    el.querySelector('select[name="postId"]').value = 'post-1'
-    el.querySelector('input[name="day"]').value = 'saturday'
-    el.querySelector('input[name="startTime"]').value = '09:00'
-    el.querySelector('input[name="endTime"]').value = '12:00'
-    el.querySelector('form').dispatchEvent(new Event('submit'))
+    const postSelect = el.querySelector('select[name="postId"]') as HTMLSelectElement
+    const dayInput = el.querySelector('input[name="day"]') as HTMLInputElement
+    const startTimeInput = el.querySelector('input[name="startTime"]') as HTMLInputElement
+    const endTimeInput = el.querySelector('input[name="endTime"]') as HTMLInputElement
+    
+    postSelect.value = 'post-1'
+    dayInput.value = 'saturday'
+    startTimeInput.value = '09:00'
+    endTimeInput.value = '12:00'
+    el.querySelector('form')?.dispatchEvent(new Event('submit'))
 
     await vi.waitFor(() =>
       expect(useCase.execute).toHaveBeenCalledWith({
@@ -54,17 +74,27 @@ describe('CrewAddSlotForm', () => {
   })
 
   it('dispatches slot-added on success', async () => {
-    const slot = { id: 'slot-1' }
-    el.addSlotToPostUseCase = makeUseCase(slot)
+    interface Slot { id: string }
+    const slot: Slot = { id: 'slot-1' }
+    const useCase = makeUseCase<{ postId: string, day: string, startTime: string, endTime: string }, Slot>(slot)
+    el.addSlotToPostUseCase = useCase
 
-    const events = []
-    el.addEventListener('slot-added', e => events.push(e.detail))
+    const events: Slot[] = []
+    el.addEventListener('slot-added', ((e: Event) => {
+      const customEvent = e as CustomEvent<Slot>
+      events.push(customEvent.detail)
+    }) as EventListener)
 
-    el.querySelector('select[name="postId"]').value = 'post-1'
-    el.querySelector('input[name="day"]').value = 'saturday'
-    el.querySelector('input[name="startTime"]').value = '09:00'
-    el.querySelector('input[name="endTime"]').value = '12:00'
-    el.querySelector('form').dispatchEvent(new Event('submit'))
+    const postSelect = el.querySelector('select[name="postId"]') as HTMLSelectElement
+    const dayInput = el.querySelector('input[name="day"]') as HTMLInputElement
+    const startTimeInput = el.querySelector('input[name="startTime"]') as HTMLInputElement
+    const endTimeInput = el.querySelector('input[name="endTime"]') as HTMLInputElement
+    
+    postSelect.value = 'post-1'
+    dayInput.value = 'saturday'
+    startTimeInput.value = '09:00'
+    endTimeInput.value = '12:00'
+    el.querySelector('form')?.dispatchEvent(new Event('submit'))
 
     await vi.waitFor(() => expect(events[0]).toBe(slot))
   })
@@ -72,10 +102,14 @@ describe('CrewAddSlotForm', () => {
   it('dispatches crew-error on failure', async () => {
     el.addSlotToPostUseCase = makeFailingUseCase('startTime must be before endTime')
 
-    const errors = []
-    el.addEventListener('crew-error', e => errors.push(e.detail))
+    interface ErrorDetail { message: string }
+    const errors: ErrorDetail[] = []
+    el.addEventListener('crew-error', ((e: Event) => {
+      const customEvent = e as CustomEvent<ErrorDetail>
+      errors.push(customEvent.detail)
+    }) as EventListener)
 
-    el.querySelector('form').dispatchEvent(new Event('submit'))
+    el.querySelector('form')?.dispatchEvent(new Event('submit'))
     await vi.waitFor(() => expect(errors[0].message).toContain('startTime'))
   })
 })

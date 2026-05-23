@@ -4,7 +4,7 @@ import { LocalStorageVolunteerRepository } from './LocalStorageVolunteerReposito
 import { Volunteer } from '../../domain/model/Volunteer'
 
 describe('LocalStorageVolunteerRepository', () => {
-  let repo
+  let repo: LocalStorageVolunteerRepository
 
   beforeEach(() => {
     localStorage.clear()
@@ -16,8 +16,8 @@ describe('LocalStorageVolunteerRepository', () => {
     await repo.save(volunteer)
 
     const found = await repo.findById(volunteer.id)
-    expect(found.id).toBe(volunteer.id)
-    expect(found.name.value).toBe('Alice')
+    expect(found?.id).toBe(volunteer.id)
+    expect(found?.name.value).toBe('Alice')
   })
 
   it('returns null when volunteer is not found', async () => {
@@ -48,6 +48,6 @@ describe('LocalStorageVolunteerRepository', () => {
 
     const repo2 = new LocalStorageVolunteerRepository()
     const found = await repo2.findById(volunteer.id)
-    expect(found.name.value).toBe('Alice')
+    expect(found?.name.value).toBe('Alice')
   })
 })
