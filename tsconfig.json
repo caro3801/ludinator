@@ -3,5 +3,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["empty.ts"]
+  "include": ["src/**/*.ts", "*.ts"]
 }
