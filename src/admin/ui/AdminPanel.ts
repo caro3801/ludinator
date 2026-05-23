@@ -4,10 +4,14 @@ export class AdminPanel extends HTMLElement {
   #authenticated = false
   #needsSetup = true
   #ws: WsClient
+  #storageKey = 'admin_authenticated'
+  #passwordStorageKey = 'admin_password'
 
   constructor() {
     super()
     this.#ws = new WsClient(`ws://${window.location.hostname}:3000`)
+    // Charger l'état d'authentification depuis localStorage
+    this.#authenticated = localStorage.getItem(this.#storageKey) === 'true'
   }
 
   connectedCallback() {
@@ -64,7 +68,10 @@ export class AdminPanel extends HTMLElement {
   #renderActions(): string {
     return `
       <div class="card mt-4">
-        <div class="card-header bg-dark text-white">Panneau Admin</div>
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+          <span>Panneau Admin</span>
+          <button id="logout-btn" class="btn btn-sm btn-light">Déconnexion</button>
+        </div>
         <div class="card-body">
           <p>Réinitialiser un module :</p>
           <div class="mb-3">
@@ -103,6 +110,17 @@ export class AdminPanel extends HTMLElement {
       const module = (this.querySelector('#reset-module') as HTMLSelectElement)?.value
       if (module) this.#handleReset(module)
     })
+
+    const logoutBtn = this.querySelector('#logout-btn')
+    logoutBtn?.addEventListener('click', () => this.#handleLogout())
+  }
+
+  #handleLogout() {
+    this.#authenticated = false
+    localStorage.removeItem(this.#storageKey)
+    localStorage.removeItem(this.#passwordStorageKey)
+    this.innerHTML = this.#render()
+    this.#setupEventListeners()
   }
 
   async #checkAdminSetup() {
@@ -144,6 +162,8 @@ export class AdminPanel extends HTMLElement {
       const resp = await this.#ws.send('admin', 'AdminLogin', { password })
       if (resp.status === 'ok') {
         this.#authenticated = true
+        localStorage.setItem(this.#storageKey, 'true')
+        localStorage.setItem(this.#passwordStorageKey, password)
         this.innerHTML = this.#render()
         this.#setupEventListeners()
       } else {
@@ -155,15 +175,12 @@ export class AdminPanel extends HTMLElement {
   }
 
   async #handleReset(module: string) {
-    const password = prompt('Confirmez avec le mot de passe admin :')
-    if (!password) return
+    const password = localStorage.getItem(this.#passwordStorageKey) || ''
 
     try {
       const resp = await this.#ws.send('admin', 'ResetModule', { module, password })
       if (resp.status === 'ok') {
-        localStorage.clear()
         this.#showToast(`Module ${module} réinitialisé`, 'success')
-        setTimeout(() => window.location.reload(), 1000)
       } else {
         this.#showToast('Mot de passe incorrect', 'error')
       }

@@ -45,12 +45,18 @@ export class WsClient {
   #ws: WebSocket | null = null
   #connected: boolean = false
   #pendingAcks: Map<string, { resolve: () => void; reject: (err: Error) => void }> = new Map()
+  #pendingResponses: Map<string, { resolve: (data: unknown) => void; reject: (err: Error) => void }> = new Map()
   #stateHandlers: Record<string, ((data: unknown) => void)[]> = {}
   #connectionHandlers: ((info: ConnectionInfo) => void)[] = []
   #retryDelay: number = 1000
+  #connectionPromise: Promise<void> | null = null
+  #connectionResolve: (() => void) | null = null
 
   constructor(url: string) {
     this.#url = url
+    this.#connectionPromise = new Promise((resolve) => {
+      this.#connectionResolve = resolve
+    })
     this.#connect()
   }
 
@@ -60,12 +66,17 @@ export class WsClient {
     this.#ws.onopen = () => {
       this.#connected = true
       this.#notifyConnection()
+      this.#connectionResolve?.()
+      this.#connectionResolve = null
       this.#flushQueue()
     }
 
     this.#ws.onclose = () => {
       this.#connected = false
       this.#notifyConnection()
+      this.#connectionPromise = new Promise((resolve) => {
+        this.#connectionResolve = resolve
+      })
       this.#scheduleReconnect()
     }
 
@@ -84,10 +95,30 @@ export class WsClient {
       }
       if ('id' in msg) {
         const ackMsg = msg as AckMessage
-        const callbacks = this.#pendingAcks.get(ackMsg.id)
-        this.#pendingAcks.delete(ackMsg.id)
-        if (!callbacks) return
-        ackMsg.ok ? callbacks.resolve() : callbacks.reject(new Error(ackMsg.error))
+        
+        // Gérer les ACK standard (ok/error)
+        const ackCallbacks = this.#pendingAcks.get(ackMsg.id)
+        if (ackCallbacks) {
+          this.#pendingAcks.delete(ackMsg.id)
+          ackMsg.ok ? ackCallbacks.resolve() : ackCallbacks.reject(new Error(ackMsg.error))
+          return
+        }
+        
+        // Gérer les réponses avec données supplémentaires (comme admin commands)
+        // Si le message a un id mais aussi d'autres propriétés (status, etc.)
+        if (ackMsg.ok !== undefined) {
+          const responseCallbacks = this.#pendingResponses.get(ackMsg.id)
+          if (responseCallbacks) {
+            this.#pendingResponses.delete(ackMsg.id)
+            if (ackMsg.ok) {
+              // Retourner le message complet (sans id et ok)
+              const { id, ok, ...responseData } = ackMsg as any
+              responseCallbacks.resolve(responseData)
+            } else {
+              responseCallbacks.reject(new Error(ackMsg.error))
+            }
+          }
+        }
       }
     }
   }
@@ -123,25 +154,22 @@ export class WsClient {
     }
   }
 
-  #sendNow(cmd: QueueCommand): Promise<void> {
+  #sendNow(cmd: QueueCommand): Promise<unknown> {
     return new Promise((resolve, reject) => {
-      this.#pendingAcks.set(cmd.id, { resolve, reject })
+      this.#pendingResponses.set(cmd.id, { resolve, reject })
       if (this.#ws) {
         this.#ws.send(JSON.stringify(cmd))
       }
     })
   }
 
-  send(module: string, action: string, payload: unknown = {}): Promise<void> {
-    const cmd: QueueCommand = { id: generateId(), module, action, payload }
-    if (this.#connected) {
-      return this.#sendNow(cmd)
+  async send(module: string, action: string, payload: unknown = {}): Promise<unknown> {
+    // Wait for connection if not connected
+    if (!this.#connected) {
+      await this.#connectionPromise
     }
-    const queue = loadQueue()
-    queue.push(cmd)
-    saveQueue(queue)
-    this.#notifyConnection()
-    return Promise.resolve()
+    const cmd: QueueCommand = { id: generateId(), module, action, payload }
+    return this.#sendNow(cmd)
   }
 
   onState(module: string, callback: (data: unknown) => void): void {
