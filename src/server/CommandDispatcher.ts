@@ -6,18 +6,38 @@ import { CrewCommandHandler } from './crew/CrewCommandHandler'
 import { CrewProjection } from './crew/CrewProjection'
 import { FestCommandHandler } from './fest/FestCommandHandler'
 import { FestProjection } from './fest/FestProjection'
+import { ServerWebSocket } from 'bun'
+import { EventId } from '../shared/types'
 
-// Type for module handlers
-interface ModuleHandler {
-  execute(action: string, payload: unknown): unknown
+interface DomainEventBase {
+  type: string
+  module: string
+  aggregateId: string | null
+  payload: unknown
+  occurredAt: string
 }
 
-// Type for module projections
+interface ModuleHandler {
+  execute(action: string, payload: unknown): DomainEventBase
+}
+
 interface ModuleProjection {
   rebuild(): unknown
 }
 
 type ModuleName = 'mioum' | 'crew' | 'fest'
+
+interface Command {
+  id: EventId
+  module: string
+  action: string
+  payload: unknown
+}
+
+interface Snapshot {
+  module: string
+  data: unknown
+}
 
 /**
  * Dispatches commands to the appropriate handler and broadcasts state updates
@@ -48,9 +68,9 @@ export class CommandDispatcher {
    * Handle an incoming command from a WebSocket client
    */
   async handle(
-    ws: WebSocket,
-    command: { id: string; module: string; action: string; payload: unknown },
-    clients: Set<WebSocket>
+    ws: ServerWebSocket<unknown>,
+    command: Command,
+    clients: Set<ServerWebSocket<unknown>>
   ): Promise<void> {
     const module = command.module as ModuleName
     const handler = this.#handlers[module]
@@ -76,7 +96,7 @@ export class CommandDispatcher {
   /**
    * Get snapshots of all module states
    */
-  snapshots(): Array<{ module: string; data: unknown }> {
+  snapshots(): Snapshot[] {
     return Object.entries(this.#projections).map(([module, projection]) => ({
       module,
       data: projection.rebuild(),
