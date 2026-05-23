@@ -57,11 +57,11 @@ export class SqliteAdminRepository implements AdminRepository {
     // Comparaison timing-safe
     const newHashBytes = new TextEncoder().encode(newHash)
     const storedHashBytes = new TextEncoder().encode(hash)
-    
+
     if (newHashBytes.length !== storedHashBytes.length) {
       return false
     }
-    
+
     let result = 0
     for (let i = 0; i < newHashBytes.length; i++) {
       result |= newHashBytes[i] ^ storedHashBytes[i]

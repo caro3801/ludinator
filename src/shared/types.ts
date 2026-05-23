@@ -21,3 +21,4 @@ export type TicketLineId = string
 
 // Admin module
 export type EventId = string
+export type ModuleName = 'crew' | 'fest' | 'mioum'

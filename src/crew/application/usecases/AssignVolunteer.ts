@@ -7,7 +7,7 @@ import { EditionId, VolunteerId, SlotId, PostId } from '../../../shared/types'
 interface AssignVolunteerParams {
   volunteer: { id: VolunteerId, name: string }
   slot: { id: SlotId, postId: PostId, window: { day: string, startTime: string, endTime: string } }
-  schedule: { id: string, editionId: EditionId, assignments: { id: string, volunteerId: VolunteerId, slotId: SlotId }[], conflicts: { volunteerId: VolunteerId, slotIdA: SlotId, slotIdB: SlotId }[] } | null
+  schedule: { id: string, editionId: EditionId, assignments: { id: string, volunteerId: VolunteerId, slotId: SlotId }[], conflicts?: { volunteerId: VolunteerId, slotIdA: SlotId, slotIdB: SlotId }[] } | null
   editionId: EditionId
 }
 

@@ -1,4 +1,32 @@
 import { Database } from 'bun:sqlite'
+import { EventId } from '../shared/types'
+
+interface StoredEventRow {
+  id: EventId
+  module: string
+  type: string
+  aggregate_id: string | null
+  payload: string
+  occurred_at: string
+}
+
+interface DomainEvent {
+  id: EventId
+  module: string
+  type: string
+  aggregateId?: string | null
+  payload: unknown
+  occurredAt: string
+}
+
+interface ReplayedEvent {
+  id: EventId
+  module: string
+  type: string
+  aggregate_id: string | null
+  payload: unknown
+  occurred_at: string
+}
 
 /**
  * Event storage using SQLite via Bun
@@ -23,14 +51,7 @@ export class EventStore {
   /**
    * Append an event to the store
    */
-  append(event: {
-    id: string
-    module: string
-    type: string
-    aggregateId?: string | null
-    payload: unknown
-    occurredAt: string
-  }): void {
+  append(event: DomainEvent): void {
     this.#db.run(
       `INSERT INTO events (id, module, type, aggregate_id, payload, occurred_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
@@ -48,67 +69,34 @@ export class EventStore {
   /**
    * Replay all events for a specific module
    */
-  replayModule(module: string): Array<{
-    id: string
-    module: string
-    type: string
-    aggregate_id: string | null
-    payload: unknown
-    occurred_at: string
-  }> {
-    interface Row {
-      id: string
-      module: string
-      type: string
-      aggregate_id: string | null
-      payload: string
-      occurred_at: string
-    }
-    const rows: Row[] = this.#db
+  replayModule(module: string): ReplayedEvent[] {
+    const rows: StoredEventRow[] = this.#db
       .query(`SELECT * FROM events WHERE module = ? ORDER BY occurred_at ASC`)
-      .all(module) as Row[]
+      .all(module) as StoredEventRow[]
     return rows.map((row) => ({ ...row, payload: JSON.parse(row.payload) }))
   }
 
   /**
    * Replay all events for a specific module, excluding those before the last reset
    */
-  async replayModuleSinceLastReset(module: string): Promise<Array<{
-    id: string
-    module: string
-    type: string
-    aggregate_id: string | null
-    payload: unknown
-    occurred_at: string
-  }>> {
-    interface Row {
-      id: string
-      module: string
-      type: string
-      aggregate_id: string | null
-      payload: string
-      occurred_at: string
-    }
-
-    // Trouver le dernier ModuleResetInitiated pour ce module
+  async replayModuleSinceLastReset(module: string): Promise<ReplayedEvent[]> {
     interface ResetRow {
       occurred_at: string
     }
+
     const resetRows: ResetRow[] = this.#db
       .query(`SELECT occurred_at FROM events WHERE module = 'admin' AND type = 'ModuleResetInitiated' AND json_extract(payload, '$.module') = ? ORDER BY occurred_at DESC LIMIT 1`)
       .all(module) as ResetRow[]
 
     if (resetRows.length === 0) {
-      // Pas de reset, retourner tous les événements
       return this.replayModule(module)
     }
 
     const lastResetAt = resetRows[0].occurred_at
 
-    // Retourner tous les événements du module après le reset
-    const rows: Row[] = this.#db
+    const rows: StoredEventRow[] = this.#db
       .query(`SELECT * FROM events WHERE module = ? AND occurred_at > ? ORDER BY occurred_at ASC`)
-      .all(module, lastResetAt) as Row[]
+      .all(module, lastResetAt) as StoredEventRow[]
 
     return rows.map((row) => ({ ...row, payload: JSON.parse(row.payload) }))
   }

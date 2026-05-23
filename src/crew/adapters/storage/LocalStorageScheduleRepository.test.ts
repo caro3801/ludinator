@@ -7,7 +7,7 @@ import { Post } from '../../domain/model/Post'
 import { TimeWindow } from '../../domain/model/TimeWindow'
 
 describe('LocalStorageScheduleRepository', () => {
-  let repo
+  let repo: LocalStorageScheduleRepository
 
   beforeEach(() => {
     localStorage.clear()
@@ -23,7 +23,7 @@ describe('LocalStorageScheduleRepository', () => {
     await repo.save(schedule)
 
     const found = await repo.findByEdition('edition-2024')
-    expect(found.editionId).toBe('edition-2024')
+    expect(found?.editionId).toBe('edition-2024')
   })
 
   it('persists assignments across instances', async () => {
@@ -36,6 +36,6 @@ describe('LocalStorageScheduleRepository', () => {
 
     const repo2 = new LocalStorageScheduleRepository()
     const found = await repo2.findByEdition('edition-2024')
-    expect(found.getAssignmentsForVolunteer(volunteer.id)).toHaveLength(1)
+    expect(found?.getAssignmentsForVolunteer(volunteer.id)).toHaveLength(1)
   })
 })

@@ -4,7 +4,7 @@ import { LocalStorageTicketRepository } from './LocalStorageTicketRepository'
 import { Ticket } from '../../domain/model/Ticket'
 
 describe('LocalStorageTicketRepository', () => {
-  let repo
+  let repo: LocalStorageTicketRepository
 
   beforeEach(() => {
     localStorage.clear()
@@ -17,11 +17,11 @@ describe('LocalStorageTicketRepository', () => {
     await repo.save(ticket)
 
     const found = await repo.findById(ticket.id)
-    expect(found.id).toBe(ticket.id)
-    expect(found.status).toBe('open')
-    expect(found.lines).toHaveLength(1)
-    expect(found.lines[0].productName).toBe('Bière')
-    expect(found.lines[0].quantity).toBe(2)
+    expect(found?.id).toBe(ticket.id)
+    expect(found?.status).toBe('open')
+    expect(found?.lines).toHaveLength(1)
+    expect(found?.lines[0].productName).toBe('Bière')
+    expect(found?.lines[0].quantity).toBe(2)
   })
 
   it('findByStatus returns only closed tickets', async () => {
@@ -65,6 +65,6 @@ describe('LocalStorageTicketRepository', () => {
     await repo.save(ticket)
     const repo2 = new LocalStorageTicketRepository()
     const found = await repo2.findById(ticket.id)
-    expect(found.lines).toHaveLength(1)
+    expect(found?.lines).toHaveLength(1)
   })
 })

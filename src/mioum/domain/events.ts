@@ -1,7 +1,15 @@
+import { ProductId, TicketId } from '../../shared/types'
+import { Product } from './model/Product'
+import { Ticket } from './model/Ticket'
+
 export class ProductCreated {
-  constructor({ product, occurredAt = new Date().toISOString() }) {
-    this.type = 'ProductCreated'
-    this.module = 'mioum'
+  readonly type = 'ProductCreated'
+  readonly module = 'mioum'
+  readonly aggregateId: ProductId
+  readonly payload: Product
+  readonly occurredAt: string
+
+  constructor({ product, occurredAt = new Date().toISOString() }: { product: Product; occurredAt?: string }) {
     this.aggregateId = product.id
     this.payload = product
     this.occurredAt = occurredAt
@@ -9,9 +17,13 @@ export class ProductCreated {
 }
 
 export class ProductUpdated {
-  constructor({ product, occurredAt = new Date().toISOString() }) {
-    this.type = 'ProductUpdated'
-    this.module = 'mioum'
+  readonly type = 'ProductUpdated'
+  readonly module = 'mioum'
+  readonly aggregateId: ProductId
+  readonly payload: Product
+  readonly occurredAt: string
+
+  constructor({ product, occurredAt = new Date().toISOString() }: { product: Product; occurredAt?: string }) {
     this.aggregateId = product.id
     this.payload = product
     this.occurredAt = occurredAt
@@ -19,9 +31,13 @@ export class ProductUpdated {
 }
 
 export class ProductDeleted {
-  constructor({ productId, occurredAt = new Date().toISOString() }) {
-    this.type = 'ProductDeleted'
-    this.module = 'mioum'
+  readonly type = 'ProductDeleted'
+  readonly module = 'mioum'
+  readonly aggregateId: ProductId
+  readonly payload: { productId: ProductId }
+  readonly occurredAt: string
+
+  constructor({ productId, occurredAt = new Date().toISOString() }: { productId: ProductId; occurredAt?: string }) {
     this.aggregateId = productId
     this.payload = { productId }
     this.occurredAt = occurredAt
@@ -29,9 +45,13 @@ export class ProductDeleted {
 }
 
 export class TicketOpened {
-  constructor({ ticket, occurredAt = new Date().toISOString() }) {
-    this.type = 'TicketOpened'
-    this.module = 'mioum'
+  readonly type = 'TicketOpened'
+  readonly module = 'mioum'
+  readonly aggregateId: TicketId
+  readonly payload: Ticket
+  readonly occurredAt: string
+
+  constructor({ ticket, occurredAt = new Date().toISOString() }: { ticket: Ticket; occurredAt?: string }) {
     this.aggregateId = ticket.id
     this.payload = ticket
     this.occurredAt = occurredAt
@@ -39,9 +59,13 @@ export class TicketOpened {
 }
 
 export class LineAddedToTicket {
-  constructor({ ticket, occurredAt = new Date().toISOString() }) {
-    this.type = 'LineAddedToTicket'
-    this.module = 'mioum'
+  readonly type = 'LineAddedToTicket'
+  readonly module = 'mioum'
+  readonly aggregateId: TicketId
+  readonly payload: Ticket
+  readonly occurredAt: string
+
+  constructor({ ticket, occurredAt = new Date().toISOString() }: { ticket: Ticket; occurredAt?: string }) {
     this.aggregateId = ticket.id
     this.payload = ticket
     this.occurredAt = occurredAt
@@ -49,9 +73,13 @@ export class LineAddedToTicket {
 }
 
 export class LineRemovedFromTicket {
-  constructor({ ticket, occurredAt = new Date().toISOString() }) {
-    this.type = 'LineRemovedFromTicket'
-    this.module = 'mioum'
+  readonly type = 'LineRemovedFromTicket'
+  readonly module = 'mioum'
+  readonly aggregateId: TicketId
+  readonly payload: Ticket
+  readonly occurredAt: string
+
+  constructor({ ticket, occurredAt = new Date().toISOString() }: { ticket: Ticket; occurredAt?: string }) {
     this.aggregateId = ticket.id
     this.payload = ticket
     this.occurredAt = occurredAt
@@ -59,9 +87,13 @@ export class LineRemovedFromTicket {
 }
 
 export class LineDecremented {
-  constructor({ ticket, occurredAt = new Date().toISOString() }) {
-    this.type = 'LineDecremented'
-    this.module = 'mioum'
+  readonly type = 'LineDecremented'
+  readonly module = 'mioum'
+  readonly aggregateId: TicketId
+  readonly payload: Ticket
+  readonly occurredAt: string
+
+  constructor({ ticket, occurredAt = new Date().toISOString() }: { ticket: Ticket; occurredAt?: string }) {
     this.aggregateId = ticket.id
     this.payload = ticket
     this.occurredAt = occurredAt
@@ -69,9 +101,13 @@ export class LineDecremented {
 }
 
 export class TicketClosed {
-  constructor({ ticket, occurredAt = new Date().toISOString() }) {
-    this.type = 'TicketClosed'
-    this.module = 'mioum'
+  readonly type = 'TicketClosed'
+  readonly module = 'mioum'
+  readonly aggregateId: TicketId
+  readonly payload: Ticket
+  readonly occurredAt: string
+
+  constructor({ ticket, occurredAt = new Date().toISOString() }: { ticket: Ticket; occurredAt?: string }) {
     this.aggregateId = ticket.id
     this.payload = ticket
     this.occurredAt = occurredAt
@@ -79,9 +115,13 @@ export class TicketClosed {
 }
 
 export class TicketCancelled {
-  constructor({ ticket, occurredAt = new Date().toISOString() }) {
-    this.type = 'TicketCancelled'
-    this.module = 'mioum'
+  readonly type = 'TicketCancelled'
+  readonly module = 'mioum'
+  readonly aggregateId: TicketId
+  readonly payload: Ticket
+  readonly occurredAt: string
+
+  constructor({ ticket, occurredAt = new Date().toISOString() }: { ticket: Ticket; occurredAt?: string }) {
     this.aggregateId = ticket.id
     this.payload = ticket
     this.occurredAt = occurredAt
@@ -89,9 +129,13 @@ export class TicketCancelled {
 }
 
 export class TicketReopened {
-  constructor({ ticket, occurredAt = new Date().toISOString() }) {
-    this.type = 'TicketReopened'
-    this.module = 'mioum'
+  readonly type = 'TicketReopened'
+  readonly module = 'mioum'
+  readonly aggregateId: TicketId
+  readonly payload: Ticket
+  readonly occurredAt: string
+
+  constructor({ ticket, occurredAt = new Date().toISOString() }: { ticket: Ticket; occurredAt?: string }) {
     this.aggregateId = ticket.id
     this.payload = ticket
     this.occurredAt = occurredAt

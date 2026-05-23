@@ -1,9 +1,10 @@
 import { generateId } from '../shared/generateId'
+import { EventId } from '../shared/types'
 
 const QUEUE_KEY = 'ludinator:queue'
 
 interface QueueCommand {
-  id: string
+  id: EventId
   module: string
   action: string
   payload: unknown
@@ -16,7 +17,7 @@ interface StateMessage {
 }
 
 interface AckMessage {
-  id: string
+  id: EventId
   ok: boolean
   error?: string
 }
@@ -44,8 +45,8 @@ export class WsClient {
   readonly #url: string
   #ws: WebSocket | null = null
   #connected: boolean = false
-  #pendingAcks: Map<string, { resolve: () => void; reject: (err: Error) => void }> = new Map()
-  #pendingResponses: Map<string, { resolve: (data: unknown) => void; reject: (err: Error) => void }> = new Map()
+  #pendingAcks: Map<EventId, { resolve: () => void; reject: (err: Error) => void }> = new Map()
+  #pendingResponses: Map<EventId, { resolve: (data: unknown) => void; reject: (err: Error) => void }> = new Map()
   #stateHandlers: Record<string, ((data: unknown) => void)[]> = {}
   #connectionHandlers: ((info: ConnectionInfo) => void)[] = []
   #retryDelay: number = 1000
@@ -103,16 +104,13 @@ export class WsClient {
           ackMsg.ok ? ackCallbacks.resolve() : ackCallbacks.reject(new Error(ackMsg.error ?? 'Unknown error'))
           return
         }
-        
-        // Gérer les réponses avec données supplémentaires (comme admin commands)
-        // Si le message a un id mais aussi d'autres propriétés (status, etc.)
+
         if (ackMsg.ok !== undefined) {
           const responseCallbacks = this.#pendingResponses.get(ackMsg.id)
           if (responseCallbacks) {
             this.#pendingResponses.delete(ackMsg.id)
             if (ackMsg.ok) {
-              // Retourner le message complet (sans id et ok)
-              const { id, ok, ...responseData } = ackMsg as any
+              const { id, ok, ...responseData } = ackMsg as unknown as Record<string, unknown>
               responseCallbacks.resolve(responseData)
             } else {
               responseCallbacks.reject(new Error(ackMsg.error ?? 'Unknown error'))
@@ -164,7 +162,6 @@ export class WsClient {
   }
 
   async send(module: string, action: string, payload: unknown = {}): Promise<unknown> {
-    // Wait for connection if not connected
     if (!this.#connected) {
       await this.#connectionPromise
     }

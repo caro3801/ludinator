@@ -1,4 +1,23 @@
 import { WsClient } from '../../client/WsClient'
+import { EventId } from '../../shared/types'
+
+interface SetupResponse {
+  status: 'needs_setup' | 'ready'
+}
+
+interface SetupAdminResponse {
+  status: 'ok'
+}
+
+interface LoginResponse {
+  status: 'ok' | 'invalid'
+}
+
+interface ResetResponse {
+  status: 'ok' | 'invalid_password'
+}
+
+type ToastType = 'success' | 'error'
 
 export class AdminPanel extends HTMLElement {
   #authenticated = false
@@ -10,7 +29,6 @@ export class AdminPanel extends HTMLElement {
   constructor() {
     super()
     this.#ws = new WsClient(`ws://${window.location.hostname}:3000`)
-    // Charger l'état d'authentification depuis localStorage
     this.#authenticated = localStorage.getItem(this.#storageKey) === 'true'
   }
 
@@ -136,7 +154,7 @@ export class AdminPanel extends HTMLElement {
 
   async #checkAdminSetup() {
     try {
-      const resp = await this.#ws.send('admin', 'CheckAdminSetup', {}) as { status: 'needs_setup' | 'ready' }
+      const resp = await this.#ws.send('admin', 'CheckAdminSetup', {}) as SetupResponse
       this.#needsSetup = resp.status === 'needs_setup'
       this.innerHTML = this.#render()
       this.#setupEventListeners()
@@ -156,7 +174,7 @@ export class AdminPanel extends HTMLElement {
     }
 
     try {
-      const resp = await this.#ws.send('admin', 'SetupAdmin', { password }) as { status: 'ok' }
+      const resp = await this.#ws.send('admin', 'SetupAdmin', { password }) as SetupAdminResponse
       if (resp.status === 'ok') {
         this.#needsSetup = false
         this.#showToast('Configuration admin terminée', 'success')
@@ -170,7 +188,7 @@ export class AdminPanel extends HTMLElement {
 
   async #handleLogin(password: string) {
     try {
-      const resp = await this.#ws.send('admin', 'AdminLogin', { password }) as { status: 'ok' | 'invalid' }
+      const resp = await this.#ws.send('admin', 'AdminLogin', { password }) as LoginResponse
       if (resp.status === 'ok') {
         this.#authenticated = true
         localStorage.setItem(this.#storageKey, 'true')
@@ -189,7 +207,7 @@ export class AdminPanel extends HTMLElement {
     const password = localStorage.getItem(this.#passwordStorageKey) || ''
 
     try {
-      const resp = await this.#ws.send('admin', 'ResetModule', { module, password }) as { status: 'ok' | 'invalid_password' }
+      const resp = await this.#ws.send('admin', 'ResetModule', { module, password }) as ResetResponse
       if (resp.status === 'ok') {
         this.#showToast(`Module ${module} réinitialisé`, 'success')
       } else {
@@ -204,10 +222,9 @@ export class AdminPanel extends HTMLElement {
     const password = localStorage.getItem(this.#passwordStorageKey) || ''
 
     try {
-      const resp = await this.#ws.send('admin', 'ResetModule', { module, password }) as { status: 'ok' | 'invalid_password' }
+      const resp = await this.#ws.send('admin', 'ResetModule', { module, password }) as ResetResponse
       if (resp.status === 'ok') {
         this.#showToast(`Module ${module} réinitialisé`, 'success')
-        // Redirect to the module page
         window.location.href = `/${module}/`
       } else {
         this.#showToast('Mot de passe incorrect', 'error')
@@ -217,7 +234,7 @@ export class AdminPanel extends HTMLElement {
     }
   }
 
-  #showToast(message: string, type: 'success' | 'error' = 'success') {
+  #showToast(message: string, type: ToastType = 'success') {
     const toast = document.createElement('div')
     toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`
     toast.style.position = 'fixed'
@@ -231,7 +248,7 @@ export class AdminPanel extends HTMLElement {
       </div>
     `
     document.body.appendChild(toast)
-    const bsToast = new (window as any).bootstrap.Toast(toast, { autohide: true, delay: 3000 })
+    const bsToast = new (window as unknown as { bootstrap: { Toast: new (el: Element, opts: unknown) => { show: () => void } } }).bootstrap.Toast(toast, { autohide: true, delay: 3000 })
     bsToast.show()
     setTimeout(() => toast.remove(), 4000)
   }

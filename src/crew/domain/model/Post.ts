@@ -3,7 +3,7 @@ import { TimeSlot } from './TimeSlot'
 import { TimeWindow } from './TimeWindow'
 import { ValidationError } from '../errors/ValidationError'
 import { generateId } from '../../../shared/generateId'
-import { PostId } from '../../../shared/types'
+import { PostId, SlotId } from '../../../shared/types'
 
 export class Post {
   #id: PostId

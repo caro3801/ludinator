@@ -41,7 +41,7 @@ describe('CrewAddSlotForm', () => {
   })
 
   it('populates the post selector with all posts', () => {
-    const options = el.querySelectorAll('select[name="postId"] option')
+    const options: NodeListOf<HTMLOptionElement> = el.querySelectorAll('select[name="postId"] option')
     expect(options).toHaveLength(2)
     expect(options[0].value).toBe('post-1')
     expect(options[0].textContent).toBe('Accueil')
