@@ -69,7 +69,11 @@ Bun.serve({
               }
             }
             return
+          default:
+            ws.send(JSON.stringify({ id: cmd.id, ok: false, error: `Unknown admin action: ${cmd.action}` }))
+            return
         }
+        return
       }
       
       // Commandes normales

@@ -13,9 +13,14 @@ class MockAdminRepo implements AdminRepository {
 class MockEventStore {
   lastEvent: any = null
   events: any[] = []
+  clearedModules: string[] = []
   append(event: any): void {
     this.lastEvent = event
     this.events.push(event)
+  }
+  clearModule(module: string): void {
+    this.clearedModules.push(module)
+    this.events = this.events.filter(e => e.module !== module)
   }
   replayModuleSinceLastReset(): Promise<any[]> {
     return Promise.resolve([])
@@ -54,5 +59,22 @@ describe('ResetModule', () => {
     const usecase = new ResetModule(mockEventStore as unknown as EventStore, mockAdminRepo)
     await usecase.execute('mioum', 'correct')
     expect(mockEventStore.lastEvent.payload.module).toBe('mioum')
+  })
+
+  it('clears events for the module being reset', async () => {
+    const usecase = new ResetModule(mockEventStore as unknown as EventStore, mockAdminRepo)
+    // Add some crew events
+    mockEventStore.append({ id: '1', module: 'crew', type: 'VolunteerCreated', payload: {} })
+    mockEventStore.append({ id: '2', module: 'crew', type: 'PostCreated', payload: {} })
+    mockEventStore.append({ id: '3', module: 'fest', type: 'ActivityCreated', payload: {} })
+    
+    expect(mockEventStore.events.length).toBe(3)
+    
+    await usecase.execute('crew', 'correct')
+    
+    // Only crew events should be cleared, fest should remain
+    expect(mockEventStore.events.length).toBe(1)
+    expect(mockEventStore.events[0].module).toBe('fest')
+    expect(mockEventStore.clearedModules).toContain('crew')
   })
 })

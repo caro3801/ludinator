@@ -17,8 +17,13 @@ class MockAdminRepo implements AdminRepository {
 
 class MockEventStore {
   events: any[] = []
+  clearedModules: string[] = []
   append(event: any): void {
     this.events.push(event)
+  }
+  clearModule(module: string): void {
+    this.clearedModules.push(module)
+    this.events = this.events.filter(e => e.module !== module)
   }
   replayModuleSinceLastReset(): Promise<any[]> {
     return Promise.resolve([])
@@ -91,6 +96,19 @@ describe('AdminCommandHandler', () => {
     it('works for mioum module', async () => {
       await handler.handleResetModule('mioum', 'correct')
       expect(mockEventStore.events[0].payload.module).toBe('mioum')
+    })
+
+    it('clears crew module events on reset', async () => {
+      // Add some crew events
+      mockEventStore.append({ id: '1', module: 'crew', type: 'VolunteerCreated', payload: {} })
+      mockEventStore.append({ id: '2', module: 'crew', type: 'PostCreated', payload: {} })
+      expect(mockEventStore.events.length).toBe(2)
+      
+      await handler.handleResetModule('crew', 'correct')
+      
+      // Crew events should be cleared
+      expect(mockEventStore.clearedModules).toContain('crew')
+      expect(mockEventStore.events.filter(e => e.module === 'crew')).toHaveLength(0)
     })
   })
 })

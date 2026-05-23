@@ -39,6 +39,13 @@ export class EventStore {
   }
 
   /**
+   * Clear all events for a specific module
+   */
+  clearModule(module: string): void {
+    this.#db.run(`DELETE FROM events WHERE module = ?`, [module])
+  }
+
+  /**
    * Replay all events for a specific module
    */
   replayModule(module: string): Array<{

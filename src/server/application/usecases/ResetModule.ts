@@ -13,6 +13,10 @@ export class ResetModule {
       throw new Error('Invalid password')
     }
 
+    // Clear all events for the module being reset
+    this.eventStore.clearModule(module)
+
+    // Record the reset in admin module
     this.eventStore.append({
       id: crypto.randomUUID(),
       module: 'admin',

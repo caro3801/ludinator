@@ -81,9 +81,14 @@ export class AdminPanel extends HTMLElement {
               <option value="mioum">Mioum (Snack)</option>
             </select>
           </div>
-          <button id="reset-btn" class="btn btn-danger">
-            Réinitialiser ce module
-          </button>
+          <div class="d-flex gap-2">
+            <button id="reset-btn" class="btn btn-danger">
+              Réinitialiser ce module
+            </button>
+            <button id="reset-and-go-btn" class="btn btn-primary">
+              Réinitialiser et aller au module
+            </button>
+          </div>
         </div>
       </div>
     `
@@ -109,6 +114,12 @@ export class AdminPanel extends HTMLElement {
     resetBtn?.addEventListener('click', () => {
       const module = (this.querySelector('#reset-module') as HTMLSelectElement)?.value
       if (module) this.#handleReset(module)
+    })
+
+    const resetAndGoBtn = this.querySelector('#reset-and-go-btn')
+    resetAndGoBtn?.addEventListener('click', () => {
+      const module = (this.querySelector('#reset-module') as HTMLSelectElement)?.value
+      if (module) this.#handleResetAndGo(module)
     })
 
     const logoutBtn = this.querySelector('#logout-btn')
@@ -181,6 +192,23 @@ export class AdminPanel extends HTMLElement {
       const resp = await this.#ws.send('admin', 'ResetModule', { module, password })
       if (resp.status === 'ok') {
         this.#showToast(`Module ${module} réinitialisé`, 'success')
+      } else {
+        this.#showToast('Mot de passe incorrect', 'error')
+      }
+    } catch (err) {
+      this.#showToast('Erreur lors du reset', 'error')
+    }
+  }
+
+  async #handleResetAndGo(module: string) {
+    const password = localStorage.getItem(this.#passwordStorageKey) || ''
+
+    try {
+      const resp = await this.#ws.send('admin', 'ResetModule', { module, password })
+      if (resp.status === 'ok') {
+        this.#showToast(`Module ${module} réinitialisé`, 'success')
+        // Redirect to the module page
+        window.location.href = `/${module}/`
       } else {
         this.#showToast('Mot de passe incorrect', 'error')
       }
