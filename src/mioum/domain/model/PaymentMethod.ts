@@ -1,20 +1,21 @@
 import { ValidationError } from '../errors/ValidationError'
 
-const VALID_METHODS = ['cash', 'card', 'other']
+const VALID_METHODS = ['cash', 'card', 'other'] as const
+export type PaymentMethodValue = typeof VALID_METHODS[number]
 
 export class PaymentMethod {
-  #value
+  #value: PaymentMethodValue
 
-  constructor(raw) {
-    if (!VALID_METHODS.includes(raw)) {
+  constructor(raw: string) {
+    if (!VALID_METHODS.includes(raw as PaymentMethodValue)) {
       throw new ValidationError(
         `PaymentMethod must be one of: ${VALID_METHODS.join(', ')}`
       )
     }
-    this.#value = raw
+    this.#value = raw as PaymentMethodValue
   }
 
-  get value() {
+  get value(): PaymentMethodValue {
     return this.#value
   }
 }

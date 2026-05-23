@@ -1,31 +1,32 @@
 import { VolunteerName } from './VolunteerName'
 import { generateId } from '../../../shared/generateId'
+import { VolunteerId } from '../../../shared/types'
 
 export class Volunteer {
-  #id
-  #name
+  #id: VolunteerId
+  #name: VolunteerName
 
-  constructor(id, name) {
+  constructor(id: VolunteerId, name: VolunteerName) {
     this.#id = id
     this.#name = name
   }
 
-  get id() { return this.#id }
-  get name() { return this.#name }
+  get id(): VolunteerId { return this.#id }
+  get name(): VolunteerName { return this.#name }
 
-  updateName(rawName) {
+  updateName(rawName: string): void {
     this.#name = new VolunteerName(rawName)
   }
 
-  toJSON() {
+  toJSON(): { id: VolunteerId, name: string } {
     return { id: this.#id, name: this.#name.value }
   }
 
-  static fromJSON({ id, name }) {
-    return new Volunteer(id, new VolunteerName(name))
+  static fromJSON(data: { id: VolunteerId, name: string }): Volunteer {
+    return new Volunteer(data.id, new VolunteerName(data.name))
   }
 
-  static create(rawName) {
-    return new Volunteer(generateId(), new VolunteerName(rawName))
+  static create(rawName: string): Volunteer {
+    return new Volunteer(generateId() as VolunteerId, new VolunteerName(rawName))
   }
 }

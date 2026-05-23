@@ -13,6 +13,12 @@ import { DeleteVolunteer } from './application/usecases/DeleteVolunteer'
 import { DeletePost } from './application/usecases/DeletePost'
 import { RemoveSlotFromPost } from './application/usecases/RemoveSlotFromPost'
 import { WsClient } from '../client/WsClient'
+import { PostCreated } from './domain/events'
+import { VolunteerCreated } from './domain/events'
+import { ScheduleRepository } from './ports/ScheduleRepository'
+import { VolunteerRepository } from './ports/VolunteerRepository'
+import { PostRepository } from './ports/PostRepository'
+import { VolunteerId, PostId, SlotId, EditionId } from '../shared/types'
 
 // Import all UI components to register them
 import './adapters/ui/CrewVolunteerForm.ts'
@@ -29,22 +35,35 @@ import './adapters/ui/CrewStatsView.ts'
 import './adapters/ui/CrewScheduleView.ts'
 import './adapters/ui/CrewVolunteerPlanningView.ts'
 
-const EDITION_ID = 'edition-2024'
+const EDITION_ID: EditionId = 'edition-2024'
 const wsPort = 3000
 const ws = new WsClient(`ws://${window.location.hostname}:${wsPort}`)
 
+// Types for custom elements
+type VolunteerFormElement = HTMLElement & { createVolunteerUseCase: { execute: (params: { name: string }) => Promise<VolunteerCreated> } }
+type VolunteerListElement = HTMLElement & { refresh: (repo: VolunteerRepository) => Promise<void> }
+type EditVolunteerNameFormElement = HTMLElement & { updateVolunteerNameUseCase: { execute: (params: { volunteer: { id: VolunteerId, name: string }, name: string }) => Promise<unknown> }; open: (detail: { volunteerId: VolunteerId, name: string }) => void }
+type PostFormElement = HTMLElement & { createPostUseCase: { execute: (params: { name: string, minVolunteers: number }) => Promise<PostCreated> } }
+type PostListElement = HTMLElement & { refresh: (repo: PostRepository) => Promise<void> }
+type AddSlotFormElement = HTMLElement & { addSlotToPostUseCase: { execute: (params: { postId: PostId, day: string, startTime: string, endTime: string }) => Promise<unknown> }; posts: Post[] }
+type EditSlotFormElement = HTMLElement & { updateSlotInPostUseCase: { execute: (params: { postId: PostId, slotId: SlotId, day: string, startTime: string, endTime: string }) => Promise<unknown> }; open: (detail: { postId: PostId, slot: { id: SlotId, window: { day: string, startTime: string, endTime: string } } }) => void }
+type EditPostNameFormElement = HTMLElement & { updatePostNameUseCase: { execute: (params: { post: { id: PostId, name: string, minVolunteers: number, slots: unknown[] }, name: string }) => Promise<unknown> }; open: (detail: { postId: PostId, name: string }) => void }
+type AssignFormElement = HTMLElement & { editionId: EditionId; assignVolunteerUseCase: { execute: (params: { volunteer: { id: VolunteerId, name: string }, slot: { id: SlotId, postId: PostId, window: { day: string, startTime: string, endTime: string } }, schedule: unknown, editionId: EditionId }) => Promise<unknown> }; volunteers: Volunteer[]; posts: Post[]; selectSlot: (detail: { slotId: SlotId, postId: PostId }) => void }
+type PlanningViewElement = HTMLElement & { refresh: (params: { scheduleRepo: ScheduleRepository, volunteerRepo: VolunteerRepository, postRepo: PostRepository }, editionId: EditionId) => Promise<void> }
+type StatsViewElement = HTMLElement & { refresh: (params: { scheduleRepo: ScheduleRepository, volunteerRepo: VolunteerRepository }, editionId: EditionId) => Promise<void> }
+
 // Get DOM elements with proper typing
-const volunteerForm = document.querySelector<HTMLElement & { createVolunteerUseCase: unknown }>('crew-volunteer-form')
-const volunteerList = document.querySelector<HTMLElement & { refresh: unknown }>('crew-volunteer-list')
-const editVolunteerNameForm = document.querySelector<HTMLElement & { updateVolunteerNameUseCase: unknown; open: (detail: unknown) => void }>('crew-edit-volunteer-name-form')
-const postForm = document.querySelector<HTMLElement & { createPostUseCase: unknown }>('crew-post-form')
-const postList = document.querySelector<HTMLElement & { refresh: unknown }>('crew-post-list')
-const addSlotForm = document.querySelector<HTMLElement & { addSlotToPostUseCase: unknown; posts: unknown }>('crew-add-slot-form')
-const editSlotForm = document.querySelector<HTMLElement & { updateSlotInPostUseCase: unknown; open: (detail: unknown) => void }>('crew-edit-slot-form')
-const editPostNameForm = document.querySelector<HTMLElement & { updatePostNameUseCase: unknown; open: (detail: unknown) => void }>('crew-edit-post-name-form')
-const assignForm = document.querySelector<HTMLElement & { editionId: string; assignVolunteerUseCase: unknown; volunteers: unknown; posts: unknown; selectSlot: (detail: unknown) => void }>('crew-assign-form')
-const planningView = document.querySelector<HTMLElement & { refresh: unknown }>('crew-planning-view')
-const statsView = document.querySelector<HTMLElement & { refresh: unknown }>('crew-stats-view')
+const volunteerForm = document.querySelector<VolunteerFormElement>('crew-volunteer-form')
+const volunteerList = document.querySelector<VolunteerListElement>('crew-volunteer-list')
+const editVolunteerNameForm = document.querySelector<EditVolunteerNameFormElement>('crew-edit-volunteer-name-form')
+const postForm = document.querySelector<PostFormElement>('crew-post-form')
+const postList = document.querySelector<PostListElement>('crew-post-list')
+const addSlotForm = document.querySelector<AddSlotFormElement>('crew-add-slot-form')
+const editSlotForm = document.querySelector<EditSlotFormElement>('crew-edit-slot-form')
+const editPostNameForm = document.querySelector<EditPostNameFormElement>('crew-edit-post-name-form')
+const assignForm = document.querySelector<AssignFormElement>('crew-assign-form')
+const planningView = document.querySelector<PlanningViewElement>('crew-planning-view')
+const statsView = document.querySelector<StatsViewElement>('crew-stats-view')
 const offlineBanner = document.getElementById('offline-banner')
 
 const dispatchError = (msg: string): void => {
@@ -54,54 +73,54 @@ const dispatchError = (msg: string): void => {
 // Configure use cases
 if (volunteerForm) {
   volunteerForm.createVolunteerUseCase = {
-    execute: ({ name }: { name: string }) => {
-      new CreateVolunteer().execute({ name })
-      return { name }
+    execute: async ({ name }: { name: string }) => {
+      const result = new CreateVolunteer().execute({ name })
+      return result
     },
   }
 }
 
 if (editVolunteerNameForm) {
   editVolunteerNameForm.updateVolunteerNameUseCase = {
-    execute: ({ volunteerId, name }: { volunteerId: string; name: string }) => {
-      new UpdateVolunteerName().execute({ volunteer: { id: volunteerId, name: 'x' }, name })
-      return { volunteerId, name }
+    execute: async ({ volunteerId, name }: { volunteerId: VolunteerId; name: string }) => {
+      const result = new UpdateVolunteerName().execute({ volunteer: { id: volunteerId, name: 'x' }, name })
+      return result
     },
   }
 }
 
 if (postForm) {
   postForm.createPostUseCase = {
-    execute: ({ name, minVolunteers }: { name: string; minVolunteers: number }) => {
-      new CreatePost().execute({ name, minVolunteers })
-      return { name, minVolunteers }
+    execute: async ({ name, minVolunteers }: { name: string; minVolunteers: number }) => {
+      const result = new CreatePost().execute({ name, minVolunteers })
+      return result
     },
   }
 }
 
 if (editPostNameForm) {
   editPostNameForm.updatePostNameUseCase = {
-    execute: ({ postId, name }: { postId: string; name: string }) => {
-      new UpdatePostName().execute({ post: { id: postId, name: 'x', minVolunteers: 1, slots: [] }, name })
-      return { postId, name }
+    execute: async ({ postId, name }: { postId: PostId; name: string }) => {
+      const result = new UpdatePostName().execute({ post: { id: postId, name: 'x', minVolunteers: 1, slots: [] }, name })
+      return result
     },
   }
 }
 
 if (addSlotForm) {
   addSlotForm.addSlotToPostUseCase = {
-    execute: ({ postId, day, startTime, endTime }: { postId: string; day: string; startTime: string; endTime: string }) => {
-      new AddSlotToPost().execute({ post: { id: postId, name: 'x', minVolunteers: 1, slots: [] }, day, startTime, endTime })
-      return { postId, day, startTime, endTime }
+    execute: async ({ postId, day, startTime, endTime }: { postId: PostId; day: string; startTime: string; endTime: string }) => {
+      const result = new AddSlotToPost().execute({ post: { id: postId, name: 'x', minVolunteers: 1, slots: [] }, day, startTime, endTime })
+      return result
     },
   }
 }
 
 if (editSlotForm) {
   editSlotForm.updateSlotInPostUseCase = {
-    execute: ({ postId, slotId, day, startTime, endTime }: { postId: string; slotId: string; day: string; startTime: string; endTime: string }) => {
-      new UpdateSlotInPost().execute({ post: { id: postId, name: 'x', minVolunteers: 1, slots: [] }, slotId, day, startTime, endTime })
-      return { postId, slotId, day, startTime, endTime }
+    execute: async ({ postId, slotId, day, startTime, endTime }: { postId: PostId; slotId: SlotId; day: string; startTime: string; endTime: string }) => {
+      const result = new UpdateSlotInPost().execute({ post: { id: postId, name: 'x', minVolunteers: 1, slots: [] }, slotId, day, startTime, endTime })
+      return result
     },
   }
 }
@@ -109,9 +128,9 @@ if (editSlotForm) {
 if (assignForm) {
   assignForm.editionId = EDITION_ID
   assignForm.assignVolunteerUseCase = {
-    execute: ({ volunteerId, slotId }: { volunteerId: string; slotId: string }) => {
-      new AssignVolunteer().execute({ volunteer: { id: volunteerId, name: 'x' }, slot: { id: slotId, postId: 'x', window: { day: 'x', startTime: '00:00', endTime: '01:00' } }, schedule: null, editionId: EDITION_ID })
-      return { volunteerId, slotId }
+    execute: async ({ volunteerId, slotId }: { volunteerId: VolunteerId; slotId: SlotId }) => {
+      const result = new AssignVolunteer().execute({ volunteer: { id: volunteerId, name: 'x' }, slot: { id: slotId, postId: 'x' as PostId, window: { day: 'x', startTime: '00:00', endTime: '01:00' } }, schedule: null, editionId: EDITION_ID })
+      return result
     },
   }
 }

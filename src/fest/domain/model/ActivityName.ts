@@ -1,13 +1,13 @@
 import { ValidationError } from '../errors/ValidationError'
 
 export class ActivityName {
-  #value
+  #value: string
 
-  constructor(raw) {
+  constructor(raw?: string) {
     const trimmed = raw?.trim() ?? ''
     if (!trimmed) throw new ValidationError('ActivityName cannot be empty')
     this.#value = trimmed
   }
 
-  get value() { return this.#value }
+  get value(): string { return this.#value }
 }

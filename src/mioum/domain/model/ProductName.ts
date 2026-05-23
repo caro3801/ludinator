@@ -1,15 +1,15 @@
 import { ValidationError } from '../errors/ValidationError'
 
 export class ProductName {
-  #value
+  #value: string
 
-  constructor(raw) {
+  constructor(raw: string | undefined | null) {
     const v = raw?.trim() ?? ''
     if (!v) throw new ValidationError('ProductName cannot be empty')
     this.#value = v
   }
 
-  get value() {
+  get value(): string {
     return this.#value
   }
 }

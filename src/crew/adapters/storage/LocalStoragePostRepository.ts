@@ -9,7 +9,7 @@ interface PostData {
   id: PostId
   name: string
   minVolunteers: number
-  slots: { id: SlotId, postId: PostId, window: unknown }[]
+  slots: { id: SlotId, postId: PostId, window: { day: string, startTime: string, endTime: string } }[]
 }
 
 export class LocalStoragePostRepository implements PostRepository {
@@ -23,7 +23,7 @@ export class LocalStoragePostRepository implements PostRepository {
 
   async save(post: Post): Promise<void> {
     const data = this.#read()
-    data[post.id as PostId] = post.toJSON() as PostData
+    data[post.id] = post.toJSON()
     this.#write(data)
   }
 

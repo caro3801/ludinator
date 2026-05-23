@@ -2,8 +2,9 @@ import { ProductName } from './ProductName'
 import { Price } from './Price'
 import { ValidationError } from '../errors/ValidationError'
 import { generateId } from '../../../shared/generateId'
+import { ProductId } from '../../../shared/types'
 
-function validateCategory(value) {
+function validateCategory(value: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new ValidationError('Product category must not be empty')
   }
@@ -11,24 +12,24 @@ function validateCategory(value) {
 }
 
 export class Product {
-  #id
-  #name
-  #price
-  #category
+  #id: ProductId
+  #name: ProductName
+  #price: Price
+  #category: string
 
-  constructor(id, name, price, category) {
+  constructor(id: ProductId, name: ProductName, price: Price, category: string) {
     this.#id = id
     this.#name = name
     this.#price = price
     this.#category = category
   }
 
-  get id() { return this.#id }
-  get name() { return this.#name }
-  get price() { return this.#price }
-  get category() { return this.#category }
+  get id(): ProductId { return this.#id }
+  get name(): ProductName { return this.#name }
+  get price(): Price { return this.#price }
+  get category(): string { return this.#category }
 
-  update({ name, price, category } = {}) {
+  update({ name, price, category }: { name?: string, price?: number, category?: string } = {}): void {
     const newName = name !== undefined ? new ProductName(name) : this.#name
     const newPrice = price !== undefined ? Price.create(price) : this.#price
     const newCategory = category !== undefined ? validateCategory(category) : this.#category
@@ -37,7 +38,7 @@ export class Product {
     this.#category = newCategory
   }
 
-  toJSON() {
+  toJSON(): { id: ProductId, name: string, price: number, category: string } {
     return {
       id: this.#id,
       name: this.#name.value,
@@ -46,11 +47,16 @@ export class Product {
     }
   }
 
-  static fromJSON({ id, name, price, category }) {
-    return new Product(id, new ProductName(name), Price.create(price), category)
+  static fromJSON(data: { id: ProductId, name: string, price: number, category: string }): Product {
+    return new Product(data.id, new ProductName(data.name), Price.create(data.price), data.category)
   }
 
-  static create(rawName, rawPrice, rawCategory) {
-    return new Product(generateId(), new ProductName(rawName), Price.create(rawPrice), validateCategory(rawCategory))
+  static create(rawName: string, rawPrice: number, rawCategory: string): Product {
+    return new Product(
+      generateId() as ProductId,
+      new ProductName(rawName),
+      Price.create(rawPrice),
+      validateCategory(rawCategory)
+    )
   }
 }

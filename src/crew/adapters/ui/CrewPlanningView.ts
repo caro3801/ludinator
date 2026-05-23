@@ -1,29 +1,39 @@
+import { Schedule } from '../../domain/model/Schedule'
+import { Volunteer } from '../../domain/model/Volunteer'
+import { Post } from '../../domain/model/Post'
+import { ScheduleRepository } from '../../ports/ScheduleRepository'
+import { VolunteerRepository } from '../../ports/VolunteerRepository'
+import { PostRepository } from '../../ports/PostRepository'
+import { EditionId, SlotId, PostId, VolunteerId } from '../../../shared/types'
+
 export class CrewPlanningView extends HTMLElement {
-  #mode = 'post'
-  #day = 'all'
-  #onlyUnderstaffed = false
-  #schedule = null
-  #volunteers = []
-  #posts = []
-  #slotMap = {}
-  #conflictIndex = new Map() // slotId → Map(volunteerId → conflicting slotId)
+  #mode: 'post' | 'volunteer' = 'post'
+  #day: string = 'all'
+  #onlyUnderstaffed: boolean = false
+  #schedule: Schedule | null = null
+  #volunteers: Volunteer[] = []
+  #posts: Post[] = []
+  #slotMap: Record<string, { postName: string, postId: PostId, minVolunteers: number, window: { day: string, startTime: string, endTime: string } }> = {}
+  #conflictIndex: Map<SlotId, Map<VolunteerId, SlotId>> = new Map()
 
   connectedCallback() {
-    this.addEventListener('click', e => {
-      const toggle = e.target.closest('button[data-mode], button[data-day]')
+    this.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLElement | null
+      if (!target) return
+      const toggle = target.closest<HTMLElement>('button[data-mode], button[data-day]')
       if (toggle) {
-        if (toggle.dataset.mode) this.#mode = toggle.dataset.mode
+        if (toggle.dataset.mode) this.#mode = toggle.dataset.mode as 'post' | 'volunteer'
         if (toggle.dataset.day) this.#day = toggle.dataset.day
         this.#updateContent()
         return
       }
-      const filterBtn = e.target.closest('button[data-filter="understaffed"]')
+      const filterBtn = target.closest<HTMLElement>('button[data-filter="understaffed"]')
       if (filterBtn) {
         this.#onlyUnderstaffed = !this.#onlyUnderstaffed
         this.#updateContent()
         return
       }
-      const del = e.target.closest('button[data-action="unassign"]')
+      const del = target.closest<HTMLElement>('button[data-action="unassign"]')
       if (del) {
         this.dispatchEvent(new CustomEvent('assignment-delete-requested', {
           detail: { assignmentId: del.dataset.assignmentId },
@@ -31,7 +41,7 @@ export class CrewPlanningView extends HTMLElement {
         }))
         return
       }
-      const add = e.target.closest('button[data-action="add-assignment"]')
+      const add = target.closest<HTMLElement>('button[data-action="add-assignment"]')
       if (add) {
         this.dispatchEvent(new CustomEvent('assign-slot-requested', {
           detail: { slotId: add.dataset.slotId, postId: add.dataset.postId },
@@ -41,7 +51,11 @@ export class CrewPlanningView extends HTMLElement {
     })
   }
 
-  async refresh({ scheduleRepo, volunteerRepo, postRepo }, editionId) {
+  async refresh(
+    { scheduleRepo, volunteerRepo, postRepo }:
+      { scheduleRepo: ScheduleRepository, volunteerRepo: VolunteerRepository, postRepo: PostRepository },
+    editionId: EditionId
+  ): Promise<void> {
     const [schedule, volunteers, posts] = await Promise.all([
       scheduleRepo.findByEdition(editionId),
       volunteerRepo.findAll(),
@@ -55,49 +69,51 @@ export class CrewPlanningView extends HTMLElement {
     this.#render()
   }
 
-  #buildSlotMap() {
+  #buildSlotMap(): void {
     this.#slotMap = {}
     for (const post of this.#posts) {
       for (const slot of post.slots) {
-        this.#slotMap[slot.id] = { postName: post.name.value, postId: post.id, minVolunteers: post.minVolunteers, window: slot.window }
+        this.#slotMap[slot.id] = { postName: post.name.value, postId: post.id, minVolunteers: post.minVolunteers, window: { day: slot.window.day, startTime: slot.window.startTime, endTime: slot.window.endTime } }
       }
     }
   }
 
-  #buildConflictIndex() {
+  #buildConflictIndex(): void {
     this.#conflictIndex = new Map()
     if (!this.#schedule) return
     for (const { volunteerId, slotIdA, slotIdB } of this.#schedule.getConflicts()) {
       if (!this.#conflictIndex.has(slotIdA)) this.#conflictIndex.set(slotIdA, new Map())
       if (!this.#conflictIndex.has(slotIdB)) this.#conflictIndex.set(slotIdB, new Map())
-      this.#conflictIndex.get(slotIdA).set(volunteerId, slotIdB)
-      this.#conflictIndex.get(slotIdB).set(volunteerId, slotIdA)
+      const mapA = this.#conflictIndex.get(slotIdA)!
+      const mapB = this.#conflictIndex.get(slotIdB)!
+      mapA.set(volunteerId, slotIdB)
+      mapB.set(volunteerId, slotIdA)
     }
   }
 
-  #conflictTooltip(volunteerId, slotId) {
+  #conflictTooltip(volunteerId: VolunteerId, slotId: SlotId): string | null {
     const conflictSlotId = this.#conflictIndex.get(slotId)?.get(volunteerId)
     if (!conflictSlotId) return null
     const other = this.#slotMap[conflictSlotId]
     return other ? `Conflit : ${other.postName} ${other.window.startTime}–${other.window.endTime}` : 'Conflit'
   }
 
-  #volunteerTag(name, volunteerId, slotId) {
+  #volunteerTag(name: string, volunteerId: VolunteerId, slotId: SlotId): string {
     const tooltip = this.#conflictTooltip(volunteerId, slotId)
     return tooltip
       ? `<span class="text-danger" data-conflict title="${tooltip}">⚠ ${name}</span>`
       : `<span>${name}</span>`
   }
 
-  #days() {
-    const days = new Set()
+  #days(): string[] {
+    const days = new Set<string>()
     for (const post of this.#posts) {
       for (const slot of post.slots) days.add(slot.window.day)
     }
     return [...days].sort()
   }
 
-  #render() {
+  #render(): void {
     const days = this.#days()
     this.innerHTML = `
       <div class="d-flex flex-wrap gap-3 mb-3">
@@ -108,7 +124,7 @@ export class CrewPlanningView extends HTMLElement {
         ${days.length > 0 ? `
           <div class="btn-group btn-group-sm" role="group">
             <button class="btn btn-outline-secondary ${this.#day === 'all' ? 'active' : ''}" data-day="all">Tous</button>
-            ${days.map(d => `
+            ${days.map((d: string) => `
               <button class="btn btn-outline-secondary ${this.#day === d ? 'active' : ''}" data-day="${d}">${d}</button>
             `).join('')}
           </div>` : ''}
@@ -118,36 +134,39 @@ export class CrewPlanningView extends HTMLElement {
     `
   }
 
-  #updateContent() {
-    this.querySelectorAll('button[data-mode]').forEach(btn =>
-      btn.classList.toggle('active', btn.dataset.mode === this.#mode)
-    )
-    this.querySelectorAll('button[data-day]').forEach(btn =>
-      btn.classList.toggle('active', btn.dataset.day === this.#day)
-    )
-    const understaffedBtn = this.querySelector('button[data-filter="understaffed"]')
+  #updateContent(): void {
+    this.querySelectorAll<HTMLElement>('button[data-mode]').forEach(btn => {
+      if (btn.dataset.mode) btn.classList.toggle('active', btn.dataset.mode === this.#mode)
+    })
+    this.querySelectorAll<HTMLElement>('button[data-day]').forEach(btn => {
+      if (btn.dataset.day) btn.classList.toggle('active', btn.dataset.day === this.#day)
+    })
+    const understaffedBtn = this.querySelector<HTMLElement>('button[data-filter="understaffed"]')
     if (understaffedBtn) understaffedBtn.classList.toggle('active', this.#onlyUnderstaffed)
-    this.querySelector('.planning-content').innerHTML = this.#renderContent()
+    const content = this.querySelector<HTMLElement>('.planning-content')
+    if (content) content.innerHTML = this.#renderContent()
   }
 
-  #renderContent() {
+  #renderContent(): string {
     if (!this.#schedule) return '<p class="text-muted">Aucune affectation enregistrée.</p>'
     return this.#mode === 'post' ? this.#renderByPost() : this.#renderByVolunteer()
   }
 
-  #renderByPost() {
-    const volunteerMap = Object.fromEntries(this.#volunteers.map(v => [v.id, v.name.value]))
-    const days = {}
+  #renderByPost(): string {
+    const volunteerMap: Record<string, string> = Object.fromEntries(this.#volunteers.map(v => [v.id, v.name.value]))
+    type DaySlots = Record<string, { time: string, staffed: boolean, addBtn: string, tags: string[] }[]>
+    type DaysMap = Record<string, DaySlots>
+    const days: DaysMap = {}
 
     for (const post of this.#posts) {
       for (const slot of post.slots) {
         if (this.#day !== 'all' && slot.window.day !== this.#day) continue
-        const assignments = this.#schedule.getAssignmentsForSlot(slot.id)
+        const assignments = this.#schedule!.getAssignmentsForSlot(slot.id)
         const staffed = assignments.length >= post.minVolunteers
         if (this.#onlyUnderstaffed && staffed) continue
         const day = slot.window.day
-        days[day] ??= {}
-        days[day][post.name.value] ??= []
+        if (!days[day]) days[day] = {}
+        if (!days[day][post.name.value]) days[day][post.name.value] = []
         const addBtn = `<button class="btn btn-link btn-sm p-0 ms-2 text-success" data-action="add-assignment" data-slot-id="${slot.id}" data-post-id="${post.id}" title="Affecter un bénévole">+</button>`
         const tags = assignments.map(a => {
           const name = volunteerMap[a.volunteerId] ?? a.volunteerId
@@ -179,12 +198,13 @@ export class CrewPlanningView extends HTMLElement {
     `).join('')
   }
 
-  #renderByVolunteer() {
+  #renderByVolunteer(): string {
     return this.#volunteers.map(volunteer => {
-      const assignments = this.#schedule.getAssignmentsForVolunteer(volunteer.id)
+      const assignments = this.#schedule!.getAssignmentsForVolunteer(volunteer.id)
       const slots = assignments
         .map(a => ({ assignmentId: a.id, slotId: a.slotId, ...this.#slotMap[a.slotId] }))
-        .filter(s => s.window && (this.#day === 'all' || s.window.day === this.#day))
+        .filter((s): s is typeof s & { window: { day: string, startTime: string, endTime: string } } => 
+          s.window !== undefined && (this.#day === 'all' || s.window.day === this.#day))
         .sort((a, b) =>
           a.window.day.localeCompare(b.window.day) ||
           a.window.startTime.localeCompare(b.window.startTime)

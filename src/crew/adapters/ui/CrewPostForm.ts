@@ -1,7 +1,10 @@
-export class CrewPostForm extends HTMLElement {
-  #useCase = null
+import { CreatePost } from '../../application/usecases/CreatePost'
+import { PostCreated } from '../../domain/events'
 
-  set createPostUseCase(uc) { this.#useCase = uc }
+export class CrewPostForm extends HTMLElement {
+  #useCase: CreatePost | null = null
+
+  set createPostUseCase(uc: CreatePost) { this.#useCase = uc }
 
   connectedCallback() {
     this.innerHTML = `
@@ -11,20 +14,27 @@ export class CrewPostForm extends HTMLElement {
         <button type="submit">Créer</button>
       </form>
     `
-    this.querySelector('form').addEventListener('submit', e => this.#onSubmit(e))
+    const form = this.querySelector('form')
+    if (form) form.addEventListener('submit', e => this.#onSubmit(e))
   }
 
-  async #onSubmit(e) {
+  async #onSubmit(e: SubmitEvent) {
     e.preventDefault()
-    const name = this.querySelector('[name="name"]').value.trim()
-    const minVolunteers = parseInt(this.querySelector('[name="minVolunteers"]').value, 10)
+    const nameInput = this.querySelector<HTMLInputElement>('[name="name"]')
+    const minInput = this.querySelector<HTMLInputElement>('[name="minVolunteers"]')
+    if (!nameInput || !minInput) return
+    const name = nameInput.value.trim()
+    const minVolunteers = parseInt(minInput.value, 10)
+    if (!this.#useCase) return
     try {
-      const post = await this.#useCase.execute({ name, minVolunteers })
-      this.dispatchEvent(new CustomEvent('post-created', { detail: post, bubbles: true }))
+      const postCreated = await this.#useCase.execute({ name, minVolunteers })
+      this.dispatchEvent(new CustomEvent('post-created', { detail: postCreated, bubbles: true }))
       e.target.reset()
-      this.querySelector('[name="minVolunteers"]').value = '1'
+      minInput.value = '1'
     } catch (err) {
-      this.dispatchEvent(new CustomEvent('crew-error', { detail: { message: err.message }, bubbles: true }))
+      if (err instanceof Error) {
+        this.dispatchEvent(new CustomEvent('crew-error', { detail: { message: err.message }, bubbles: true }))
+      }
     }
   }
 }

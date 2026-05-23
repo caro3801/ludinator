@@ -1,9 +1,13 @@
+import { PostRepository } from '../../ports/PostRepository'
+import { Post } from '../../domain/model/Post'
+import { PostId } from '../../../shared/types'
+
 export class CrewPostList extends HTMLElement {
   connectedCallback() {
-    this.addEventListener('click', e => {
-      const btn = e.target.closest('button[data-action]')
+    this.addEventListener('click', (e: Event) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>('button[data-action]')
       if (!btn) return
-      const { action, postId, slotId, name } = btn.dataset
+      const { action, postId, slotId, name, slot } = btn.dataset
 
       if (action === 'delete-post') {
         this.dispatchEvent(new CustomEvent('post-delete-requested', {
@@ -23,23 +27,23 @@ export class CrewPostList extends HTMLElement {
           bubbles: true,
         }))
       }
-      if (action === 'edit-slot') {
-        const slot = JSON.parse(btn.dataset.slot)
+      if (action === 'edit-slot' && slot) {
+        const slotData = JSON.parse(slot)
         this.dispatchEvent(new CustomEvent('slot-edit-requested', {
-          detail: { postId, slot },
+          detail: { postId, slot: slotData },
           bubbles: true,
         }))
       }
     })
   }
 
-  async refresh(repo) {
+  async refresh(repo: PostRepository): Promise<void> {
     const posts = await repo.findAll()
     if (posts.length === 0) {
       this.innerHTML = '<p class="text-muted">Aucun poste enregistré.</p>'
       return
     }
-    this.innerHTML = `<ul class="list-group">${posts.map(p => `
+    this.innerHTML = `<ul class="list-group">${(posts as Post[]).map(p => `
       <li class="list-group-item">
         <div class="d-flex align-items-center gap-2">
           <strong>${p.name.value}</strong>
@@ -61,7 +65,7 @@ export class CrewPostList extends HTMLElement {
                   data-action="edit-slot"
                   data-post-id="${p.id}"
                   data-slot-id="${s.id}"
-                  data-slot='${JSON.stringify({ id: s.id, window: s.window })}'>✏️</button>
+                  data-slot='${JSON.stringify({ id: s.id, window: { day: s.window.day, startTime: s.window.startTime, endTime: s.window.endTime } })}'>✏️</button>
                 <button class="btn btn-outline-danger btn-sm py-0 px-1"
                   data-action="delete-slot"
                   data-post-id="${p.id}"

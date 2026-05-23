@@ -1,16 +1,34 @@
 import { ValidationError } from '../errors/ValidationError'
 import { generateId } from '../../../shared/generateId'
-import { PaymentMethod } from './PaymentMethod'
+import { PaymentMethod, PaymentMethodValue } from './PaymentMethod'
 import { Price } from './Price'
+import { TicketId, TicketLineId, ProductId } from '../../../shared/types'
+
+interface TicketLineData {
+  id: TicketLineId
+  productId: ProductId
+  productName: string
+  unitPrice: number
+  quantity: number,
+  subtotal: number
+}
+
+interface TicketData {
+  id: TicketId
+  lines: TicketLineData[]
+  status: 'open' | 'closed' | 'cancelled'
+  paymentMethod: PaymentMethodValue | null
+  closedAt: number | null
+}
 
 class TicketLine {
-  #id
-  #productId
-  #productName
-  #unitPrice
-  #quantity
+  #id: TicketLineId
+  #productId: ProductId
+  #productName: string
+  #unitPrice: number
+  #quantity: number
 
-  constructor(id, productId, productName, unitPrice, quantity) {
+  constructor(id: TicketLineId, productId: ProductId, productName: string, unitPrice: number, quantity: number) {
     this.#id = id
     this.#productId = productId
     this.#productName = productName
@@ -18,21 +36,21 @@ class TicketLine {
     this.#quantity = quantity
   }
 
-  get id() { return this.#id }
-  get productId() { return this.#productId }
-  get productName() { return this.#productName }
-  get unitPrice() { return this.#unitPrice }
-  get quantity() { return this.#quantity }
-  get subtotal() { return this.#unitPrice * this.#quantity }
+  get id(): TicketLineId { return this.#id }
+  get productId(): ProductId { return this.#productId }
+  get productName(): string { return this.#productName }
+  get unitPrice(): number { return this.#unitPrice }
+  get quantity(): number { return this.#quantity }
+  get subtotal(): number { return this.#unitPrice * this.#quantity }
 
-  withQuantity(quantity) {
+  withQuantity(quantity: number): TicketLine {
     if (!Number.isInteger(quantity) || quantity < 1) {
       throw new ValidationError('quantity must be a positive integer')
     }
     return new TicketLine(this.#id, this.#productId, this.#productName, this.#unitPrice, quantity)
   }
 
-  toJSON() {
+  toJSON(): TicketLineData {
     return {
       id: this.#id,
       productId: this.#productId,
@@ -43,27 +61,27 @@ class TicketLine {
     }
   }
 
-  static fromJSON({ id, productId, productName, unitPrice, quantity }) {
-    return new TicketLine(id, productId, productName, unitPrice, quantity)
+  static fromJSON(data: TicketLineData): TicketLine {
+    return new TicketLine(data.id, data.productId, data.productName, data.unitPrice, data.quantity)
   }
 
-  static create(productId, productName, unitPrice, quantity) {
+  static create(productId: ProductId, productName: string, unitPrice: number, quantity: number): TicketLine {
     Price.create(unitPrice)
     if (!Number.isInteger(quantity) || quantity < 1) {
       throw new ValidationError('quantity must be a positive integer')
     }
-    return new TicketLine(generateId(), productId, productName, unitPrice, quantity)
+    return new TicketLine(generateId() as TicketLineId, productId, productName, unitPrice, quantity)
   }
 }
 
 export class Ticket {
-  #id
-  #lines
-  #status
-  #paymentMethod
-  #closedAt
+  #id: TicketId
+  #lines: TicketLine[]
+  #status: 'open' | 'closed' | 'cancelled'
+  #paymentMethod: PaymentMethodValue | null
+  #closedAt: number | null
 
-  constructor(id, lines, status, paymentMethod, closedAt) {
+  constructor(id: TicketId, lines: TicketLine[], status: 'open' | 'closed' | 'cancelled', paymentMethod: PaymentMethodValue | null, closedAt: number | null) {
     this.#id = id
     this.#lines = lines
     this.#status = status
@@ -71,15 +89,15 @@ export class Ticket {
     this.#closedAt = closedAt
   }
 
-  get id() { return this.#id }
-  get lines() { return [...this.#lines] }
-  get status() { return this.#status }
-  get paymentMethod() { return this.#paymentMethod }
-  get closedAt() { return this.#closedAt }
-  get total() { return this.#lines.reduce((sum, line) => sum + line.subtotal, 0) }
-  get isOpen() { return this.#status === 'open' }
+  get id(): TicketId { return this.#id }
+  get lines(): TicketLine[] { return [...this.#lines] }
+  get status(): 'open' | 'closed' | 'cancelled' { return this.#status }
+  get paymentMethod(): PaymentMethodValue | null { return this.#paymentMethod }
+  get closedAt(): number | null { return this.#closedAt }
+  get total(): number { return this.#lines.reduce((sum, line) => sum + line.subtotal, 0) }
+  get isOpen(): boolean { return this.#status === 'open' }
 
-  addLine(productId, productName, unitPrice, quantity) {
+  addLine(productId: ProductId, productName: string, unitPrice: number, quantity: number): TicketLine {
     if (!this.isOpen) throw new ValidationError('Ticket is not open')
     const existing = this.#lines.find(l => l.productId === productId)
     if (existing) {
@@ -92,12 +110,12 @@ export class Ticket {
     return line
   }
 
-  removeLine(lineId) {
+  removeLine(lineId: TicketLineId): void {
     if (!this.isOpen) throw new ValidationError('Ticket is not open')
     this.#lines = this.#lines.filter(l => l.id !== lineId)
   }
 
-  decrementLine(lineId) {
+  decrementLine(lineId: TicketLineId): void {
     if (!this.isOpen) throw new ValidationError('Ticket is not open')
     const line = this.#lines.find(l => l.id === lineId)
     if (!line) return
@@ -108,7 +126,7 @@ export class Ticket {
     }
   }
 
-  close(rawPaymentMethod = null) {
+  close(rawPaymentMethod: string | null = null): void {
     if (!this.isOpen) throw new ValidationError('Ticket is not open')
     if (this.#lines.length === 0) throw new ValidationError('Ticket has no lines')
     this.#status = 'closed'
@@ -116,19 +134,19 @@ export class Ticket {
     this.#closedAt = Date.now()
   }
 
-  cancel() {
+  cancel(): void {
     if (!this.isOpen) throw new ValidationError('Ticket is not open')
     this.#status = 'cancelled'
   }
 
-  reopen() {
+  reopen(): void {
     if (this.#status !== 'closed') throw new ValidationError('Only a closed ticket can be reopened')
     this.#status = 'open'
     this.#paymentMethod = null
     this.#closedAt = null
   }
 
-  toJSON() {
+  toJSON(): TicketData {
     return {
       id: this.#id,
       lines: this.#lines.map(l => l.toJSON()),
@@ -138,17 +156,17 @@ export class Ticket {
     }
   }
 
-  static fromJSON({ id, lines, status, paymentMethod, closedAt }) {
+  static fromJSON(data: TicketData): Ticket {
     return new Ticket(
-      id,
-      lines.map(l => TicketLine.fromJSON(l)),
-      status,
-      paymentMethod,
-      closedAt,
+      data.id,
+      data.lines.map(l => TicketLine.fromJSON(l)),
+      data.status,
+      data.paymentMethod,
+      data.closedAt,
     )
   }
 
-  static create() {
-    return new Ticket(generateId(), [], 'open', null, null)
+  static create(): Ticket {
+    return new Ticket(generateId() as TicketId, [], 'open', null, null)
   }
 }

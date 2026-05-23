@@ -1,5 +1,22 @@
+import { ScheduleRepository } from '../../ports/ScheduleRepository'
+import { VolunteerRepository } from '../../ports/VolunteerRepository'
+import { PostRepository } from '../../ports/PostRepository'
+import { Schedule } from '../../domain/model/Schedule'
+import { Volunteer } from '../../domain/model/Volunteer'
+import { Post } from '../../domain/model/Post'
+import { EditionId } from '../../../shared/types'
+
+interface SlotAssignment {
+  time: string
+  names: string[]
+}
+
 export class CrewScheduleView extends HTMLElement {
-  async refresh({ scheduleRepo, volunteerRepo, postRepo }, editionId) {
+  async refresh(
+    { scheduleRepo, volunteerRepo, postRepo }:
+      { scheduleRepo: ScheduleRepository, volunteerRepo: VolunteerRepository, postRepo: PostRepository },
+    editionId: EditionId
+  ): Promise<void> {
     const [schedule, volunteers, posts] = await Promise.all([
       scheduleRepo.findByEdition(editionId),
       volunteerRepo.findAll(),
@@ -11,17 +28,20 @@ export class CrewScheduleView extends HTMLElement {
       return
     }
 
-    const volunteerMap = Object.fromEntries(volunteers.map(v => [v.id, v.name.value]))
+    const volunteerMap: Record<string, string> = Object.fromEntries(
+      (volunteers as Volunteer[]).map(v => [v.id, v.name.value])
+    )
 
     // Build: day → post → [{ slot, volunteers[] }]
-    const days = {}
-    for (const post of posts) {
+    type DaysType = Record<string, Record<string, SlotAssignment[]>>
+    const days: DaysType = {}
+    for (const post of posts as Post[]) {
       for (const slot of post.slots) {
         const assignments = schedule.getAssignmentsForSlot(slot.id)
         if (!assignments.length) continue
         const day = slot.window.day
-        days[day] ??= {}
-        days[day][post.name.value] ??= []
+        if (!days[day]) days[day] = {}
+        if (!days[day][post.name.value]) days[day][post.name.value] = []
         days[day][post.name.value].push({
           time: `${slot.window.startTime}–${slot.window.endTime}`,
           names: assignments.map(a => volunteerMap[a.volunteerId] ?? a.volunteerId),

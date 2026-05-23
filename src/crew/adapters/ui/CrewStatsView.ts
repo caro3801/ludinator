@@ -1,5 +1,21 @@
+import { ScheduleRepository } from '../../ports/ScheduleRepository'
+import { VolunteerRepository } from '../../ports/VolunteerRepository'
+import { Schedule } from '../../domain/model/Schedule'
+import { Volunteer } from '../../domain/model/Volunteer'
+import { EditionId, VolunteerId } from '../../../shared/types'
+
+interface VolunteerStatsRow {
+  name: string
+  id: VolunteerId
+  hours: number
+}
+
 export class CrewStatsView extends HTMLElement {
-  async refresh({ scheduleRepo, volunteerRepo }, editionId) {
+  async refresh(
+    { scheduleRepo, volunteerRepo }:
+      { scheduleRepo: ScheduleRepository, volunteerRepo: VolunteerRepository },
+    editionId: EditionId
+  ): Promise<void> {
     const [schedule, volunteers] = await Promise.all([
       scheduleRepo.findByEdition(editionId),
       volunteerRepo.findAll(),
@@ -10,7 +26,7 @@ export class CrewStatsView extends HTMLElement {
       return
     }
 
-    const rows = volunteers
+    const rows: VolunteerStatsRow[] = (volunteers as Volunteer[])
       .map(v => {
         const assignments = schedule.getAssignmentsForVolunteer(v.id)
         const hours = assignments.reduce((sum, a) => sum + a.window.durationHours, 0)

@@ -1,21 +1,20 @@
 import { ValidationError } from '../errors/ValidationError'
 
 export class Price {
-  #value
+  #value: number
 
-  constructor(value) {
+  constructor(value: number) {
     if (typeof value !== 'number' || isNaN(value)) {
       throw new ValidationError('Price must be a number')
     }
-
     this.#value = value
   }
 
-  static create(value) {
+  static create(value: number): Price {
     return new Price(value)
   }
 
-  get value() {
+  get value(): number {
     return this.#value
   }
 }

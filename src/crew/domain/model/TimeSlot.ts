@@ -1,34 +1,35 @@
 import { TimeWindow } from './TimeWindow'
 import { generateId } from '../../../shared/generateId'
+import { PostId, SlotId } from '../../../shared/types'
 
 export class TimeSlot {
-  #id
-  #postId
-  #window
+  #id: SlotId
+  #postId: PostId
+  #window: TimeWindow
 
-  constructor(id, postId, window) {
+  constructor(id: SlotId, postId: PostId, window: TimeWindow) {
     this.#id = id
     this.#postId = postId
     this.#window = window
   }
 
-  get id() { return this.#id }
-  get postId() { return this.#postId }
-  get window() { return this.#window }
+  get id(): SlotId { return this.#id }
+  get postId(): PostId { return this.#postId }
+  get window(): TimeWindow { return this.#window }
 
-  updateWindow(newWindow) {
+  updateWindow(newWindow: TimeWindow): void {
     this.#window = newWindow
   }
 
-  toJSON() {
+  toJSON(): { id: SlotId, postId: PostId, window: { day: string, startTime: string, endTime: string } } {
     return { id: this.#id, postId: this.#postId, window: this.#window.toJSON() }
   }
 
-  static fromJSON({ id, postId, window }) {
-    return new TimeSlot(id, postId, TimeWindow.fromJSON(window))
+  static fromJSON(data: { id: SlotId, postId: PostId, window: { day: string, startTime: string, endTime: string } }): TimeSlot {
+    return new TimeSlot(data.id, data.postId, TimeWindow.fromJSON(data.window))
   }
 
-  static create(postId, window) {
-    return new TimeSlot(generateId(), postId, window)
+  static create(postId: PostId, window: TimeWindow): TimeSlot {
+    return new TimeSlot(generateId() as SlotId, postId, window)
   }
 }
