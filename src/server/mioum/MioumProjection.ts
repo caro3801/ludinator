@@ -1,4 +1,5 @@
 import { EventStore } from '../EventStore'
+import { PaymentMethodValue } from '../../mioum/domain/model/PaymentMethod'
 import { ProductId, TicketId, TicketLineId } from '../../shared/types'
 
 interface Product {
@@ -21,7 +22,7 @@ interface Ticket {
   id: TicketId
   lines: TicketLine[]
   status: 'open' | 'closed' | 'cancelled'
-  paymentMethod: string | null
+  paymentMethod: PaymentMethodValue | null
   closedAt: number | null
   total: number
 }
@@ -30,7 +31,7 @@ interface CurrentTicket {
   id: TicketId
   lines: TicketLine[]
   status: 'open' | 'closed' | 'cancelled'
-  paymentMethod: string | null
+  paymentMethod: PaymentMethodValue | null
   closedAt: number | null
   total: number
 }

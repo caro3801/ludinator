@@ -10,15 +10,71 @@ import { UpdateSlotInPost } from '../../crew/application/usecases/UpdateSlotInPo
 import { AssignVolunteer } from '../../crew/application/usecases/AssignVolunteer'
 import { UnassignVolunteer } from '../../crew/application/usecases/UnassignVolunteer'
 import { CrewProjection } from './CrewProjection'
-import { CrewDomainEvent } from '../../crew/domain/events'
+import { VolunteerId, PostId, CrewSlotId, EditionId, ScheduleId } from '../../shared/types'
 
-const EDITION_ID = 'edition-2024'
+const EDITION_ID: EditionId = 'edition-2024'
+
+interface Volunteer {
+  id: VolunteerId
+  name: string
+}
+
+interface TimeWindow {
+  day: string
+  startTime: string
+  endTime: string
+}
+
+interface CrewSlot {
+  id: CrewSlotId
+  postId: PostId
+  window: TimeWindow
+}
+
+interface Post {
+  id: PostId
+  name: string
+  minVolunteers: number
+  slots: CrewSlot[]
+}
+
+interface Assignment {
+  id: string
+  volunteerId: VolunteerId
+  slotId: CrewSlotId
+}
+
+interface Schedule {
+  id: ScheduleId
+  editionId: EditionId
+  assignments: Assignment[]
+}
 
 interface CrewState {
-  volunteers: { id: string; name: string }[]
-  posts: { id: string; name: string; minVolunteers: number; slots: { id: string; window: { day: string; startTime: string; endTime: string } }[] }[]
-  schedule: { id: string; editionId: string; assignments: { id: string; volunteerId: string; slotId: string }[] } | null
+  volunteers: Volunteer[]
+  posts: Post[]
+  schedule: Schedule | null
 }
+
+type CrewDomainEvent = {
+  type: string
+  module: string
+  aggregateId: string | null
+  payload: unknown
+  occurredAt: string
+}
+
+type CreateVolunteerPayload = { name: string }
+type UpdateVolunteerNamePayload = { volunteerId: VolunteerId; name: string }
+type DeleteVolunteerPayload = { volunteerId: VolunteerId }
+type CreatePostPayload = { name: string; minVolunteers: number }
+type UpdatePostNamePayload = { postId: PostId; name: string }
+type DeletePostPayload = { postId: PostId }
+type AddSlotToPostPayload = { postId: PostId; day: string; startTime: string; endTime: string }
+type RemoveSlotFromPostPayload = { postId: PostId; slotId: CrewSlotId }
+type UpdateSlotInPostPayload = { postId: PostId; slotId: CrewSlotId; day: string; startTime: string; endTime: string }
+type AssignVolunteerPayload = { volunteerId: VolunteerId; slotId: CrewSlotId }
+type UnassignVolunteerPayload = { assignmentId: string }
 
 /**
  * Handles commands for the Crew module
@@ -36,26 +92,15 @@ export class CrewCommandHandler {
   execute(action: string, payload: unknown): CrewDomainEvent {
     const state = this.#projection.rebuild() as CrewState
 
-    type CreateVolunteerPayload = { name: string }
-    type UpdateVolunteerNamePayload = { volunteerId: string; name: string }
-    type DeleteVolunteerPayload = { volunteerId: string }
-    type CreatePostPayload = { name: string; minVolunteers: number }
-    type UpdatePostNamePayload = { postId: string; name: string }
-    type DeletePostPayload = { postId: string }
-    type AddSlotToPostPayload = { postId: string; day: string; startTime: string; endTime: string }
-    type RemoveSlotFromPostPayload = { postId: string; slotId: string }
-    type UpdateSlotInPostPayload = { postId: string; slotId: string; day: string; startTime: string; endTime: string }
-    type AssignVolunteerPayload = { volunteerId: string; slotId: string }
-    type UnassignVolunteerPayload = { assignmentId: string }
-
     switch (action) {
       case 'CreateVolunteer':
         return new CreateVolunteer().execute(payload as CreateVolunteerPayload)
 
       case 'UpdateVolunteerName': {
-        const volunteer = state.volunteers.find((v) => v.id === (payload as UpdateVolunteerNamePayload).volunteerId)
-        if (!volunteer) throw new Error(`Volunteer not found: ${(payload as UpdateVolunteerNamePayload).volunteerId}`)
-        return new UpdateVolunteerName().execute({ volunteer, name: (payload as UpdateVolunteerNamePayload).name })
+        const p = payload as UpdateVolunteerNamePayload
+        const volunteer = state.volunteers.find((v) => v.id === p.volunteerId)
+        if (!volunteer) throw new Error(`Volunteer not found: ${p.volunteerId}`)
+        return new UpdateVolunteerName().execute({ volunteer, name: p.name })
       }
 
       case 'DeleteVolunteer':
@@ -65,50 +110,53 @@ export class CrewCommandHandler {
         return new CreatePost().execute(payload as CreatePostPayload)
 
       case 'UpdatePostName': {
-        const post = state.posts.find((p) => p.id === (payload as UpdatePostNamePayload).postId)
-        if (!post) throw new Error(`Post not found: ${(payload as UpdatePostNamePayload).postId}`)
-        return new UpdatePostName().execute({ post, name: (payload as UpdatePostNamePayload).name })
+        const p = payload as UpdatePostNamePayload
+        const post = state.posts.find((p2) => p2.id === p.postId)
+        if (!post) throw new Error(`Post not found: ${p.postId}`)
+        return new UpdatePostName().execute({ post, name: p.name })
       }
 
       case 'DeletePost':
         return new DeletePost().execute(payload as DeletePostPayload)
 
       case 'AddSlotToPost': {
-        const post = state.posts.find((p) => p.id === (payload as AddSlotToPostPayload).postId)
-        if (!post) throw new Error(`Post not found: ${(payload as AddSlotToPostPayload).postId}`)
         const p = payload as AddSlotToPostPayload
+        const post = state.posts.find((p2) => p2.id === p.postId)
+        if (!post) throw new Error(`Post not found: ${p.postId}`)
         return new AddSlotToPost().execute({ post, day: p.day, startTime: p.startTime, endTime: p.endTime })
       }
 
       case 'RemoveSlotFromPost': {
-        const post = state.posts.find((p) => p.id === (payload as RemoveSlotFromPostPayload).postId)
-        if (!post) throw new Error(`Post not found: ${(payload as RemoveSlotFromPostPayload).postId}`)
-        return new RemoveSlotFromPost().execute({ post, slotId: (payload as RemoveSlotFromPostPayload).slotId })
+        const p = payload as RemoveSlotFromPostPayload
+        const post = state.posts.find((p2) => p2.id === p.postId)
+        if (!post) throw new Error(`Post not found: ${p.postId}`)
+        return new RemoveSlotFromPost().execute({ post, slotId: p.slotId })
       }
 
       case 'UpdateSlotInPost': {
-        const post = state.posts.find((p) => p.id === (payload as UpdateSlotInPostPayload).postId)
-        if (!post) throw new Error(`Post not found: ${(payload as UpdateSlotInPostPayload).postId}`)
         const p = payload as UpdateSlotInPostPayload
+        const post = state.posts.find((p2) => p2.id === p.postId)
+        if (!post) throw new Error(`Post not found: ${p.postId}`)
         return new UpdateSlotInPost().execute({ post, slotId: p.slotId, day: p.day, startTime: p.startTime, endTime: p.endTime })
       }
 
       case 'AssignVolunteer': {
-        const volunteer = state.volunteers.find((v) => v.id === (payload as AssignVolunteerPayload).volunteerId)
-        if (!volunteer) throw new Error(`Volunteer not found: ${(payload as AssignVolunteerPayload).volunteerId}`)
-        let slot: { id: string; postId: string; window: { day: string; startTime: string; endTime: string } } | null = null
-        const slotId = (payload as AssignVolunteerPayload).slotId
+        const p = payload as AssignVolunteerPayload
+        const volunteer = state.volunteers.find((v) => v.id === p.volunteerId)
+        if (!volunteer) throw new Error(`Volunteer not found: ${p.volunteerId}`)
+        let slot: { id: CrewSlotId; postId: PostId; window: TimeWindow } | null = null
         for (const post of state.posts) {
-          const found = post.slots.find((s) => s.id === slotId)
+          const found = post.slots.find((s) => s.id === p.slotId)
           if (found) { slot = { id: found.id, postId: post.id, window: found.window }; break }
         }
-        if (!slot) throw new Error(`Slot not found: ${slotId}`)
+        if (!slot) throw new Error(`Slot not found: ${p.slotId}`)
         return new AssignVolunteer().execute({ volunteer, slot, schedule: state.schedule, editionId: EDITION_ID })
       }
 
       case 'UnassignVolunteer': {
+        const p = payload as UnassignVolunteerPayload
         if (!state.schedule) throw new Error('No schedule found')
-        return new UnassignVolunteer().execute({ schedule: state.schedule, assignmentId: (payload as UnassignVolunteerPayload).assignmentId })
+        return new UnassignVolunteer().execute({ schedule: state.schedule, assignmentId: p.assignmentId })
       }
 
       default:

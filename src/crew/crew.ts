@@ -40,17 +40,17 @@ const wsPort = 3000
 const ws = new WsClient(`ws://${window.location.hostname}:${wsPort}`)
 
 // Types for custom elements
-type VolunteerFormElement = HTMLElement & { createVolunteerUseCase: { execute: (params: { name: string }) => Promise<VolunteerCreated> } }
+type VolunteerFormElement = HTMLElement & { createVolunteerUseCase: CreateVolunteer | null }
 type VolunteerListElement = HTMLElement & { refresh: (repo: VolunteerRepository) => Promise<void> }
-type EditVolunteerNameFormElement = HTMLElement & { updateVolunteerNameUseCase: { execute: (params: { volunteer: { id: VolunteerId, name: string }, name: string }) => Promise<unknown> }; open: (detail: { volunteerId: VolunteerId, name: string }) => void }
-type PostFormElement = HTMLElement & { createPostUseCase: { execute: (params: { name: string, minVolunteers: number }) => Promise<PostCreated> } }
+type EditVolunteerNameFormElement = HTMLElement & { updateVolunteerNameUseCase: { execute: (params: { volunteerId: string; name: string }) => Promise<{ id: string; name: { value: string } }> }; open: (detail: { volunteerId: string; name: string }) => void }
+type PostFormElement = HTMLElement & { createPostUseCase: CreatePost | null }
 type PostListElement = HTMLElement & { refresh: (repo: PostRepository) => Promise<void> }
-type AddSlotFormElement = HTMLElement & { addSlotToPostUseCase: { execute: (params: { postId: PostId, day: string, startTime: string, endTime: string }) => Promise<unknown> }; posts: Post[] }
-type EditSlotFormElement = HTMLElement & { updateSlotInPostUseCase: { execute: (params: { postId: PostId, slotId: SlotId, day: string, startTime: string, endTime: string }) => Promise<unknown> }; open: (detail: { postId: PostId, slot: { id: SlotId, window: { day: string, startTime: string, endTime: string } } }) => void }
-type EditPostNameFormElement = HTMLElement & { updatePostNameUseCase: { execute: (params: { post: { id: PostId, name: string, minVolunteers: number, slots: unknown[] }, name: string }) => Promise<unknown> }; open: (detail: { postId: PostId, name: string }) => void }
-type AssignFormElement = HTMLElement & { editionId: EditionId; assignVolunteerUseCase: { execute: (params: { volunteer: { id: VolunteerId, name: string }, slot: { id: SlotId, postId: PostId, window: { day: string, startTime: string, endTime: string } }, schedule: unknown, editionId: EditionId }) => Promise<unknown> }; volunteers: Volunteer[]; posts: Post[]; selectSlot: (detail: { slotId: SlotId, postId: PostId }) => void }
-type PlanningViewElement = HTMLElement & { refresh: (params: { scheduleRepo: ScheduleRepository, volunteerRepo: VolunteerRepository, postRepo: PostRepository }, editionId: EditionId) => Promise<void> }
-type StatsViewElement = HTMLElement & { refresh: (params: { scheduleRepo: ScheduleRepository, volunteerRepo: VolunteerRepository }, editionId: EditionId) => Promise<void> }
+type AddSlotFormElement = HTMLElement & { addSlotToPostUseCase: { execute: (params: { postId: string; day: string; startTime: string; endTime: string }) => Promise<unknown> }; posts: Post[] }
+type EditSlotFormElement = HTMLElement & { updateSlotInPostUseCase: { execute: (params: { postId: string; slotId: string; day: string; startTime: string; endTime: string }) => Promise<unknown> }; open: (detail: { postId: string; slot: unknown }) => void }
+type EditPostNameFormElement = HTMLElement & { updatePostNameUseCase: { execute: (params: { postId: string; name: string }) => Promise<unknown> }; open: (detail: { postId: string; name: string }) => void }
+type AssignFormElement = HTMLElement & { editionId: EditionId; assignVolunteerUseCase: { execute: (params: { volunteerId: string; slotId: string; schedule: unknown; editionId: string }) => Promise<unknown> }; volunteers: Volunteer[]; posts: Post[]; selectSlot: (detail: { slotId: string; postId: string }) => void }
+type PlanningViewElement = HTMLElement & { refresh: (params: { scheduleRepo: ScheduleRepository; volunteerRepo: VolunteerRepository; postRepo: PostRepository }, editionId: EditionId) => Promise<void> }
+type StatsViewElement = HTMLElement & { refresh: (params: { scheduleRepo: ScheduleRepository; volunteerRepo: VolunteerRepository }, editionId: EditionId) => Promise<void> }
 
 // Get DOM elements with proper typing
 const volunteerForm = document.querySelector<VolunteerFormElement>('crew-volunteer-form')
@@ -72,45 +72,33 @@ const dispatchError = (msg: string): void => {
 
 // Configure use cases
 if (volunteerForm) {
-  volunteerForm.createVolunteerUseCase = {
-    execute: async ({ name }: { name: string }) => {
-      const result = new CreateVolunteer().execute({ name })
-      return result
-    },
-  }
+  volunteerForm.createVolunteerUseCase = new CreateVolunteer()
 }
 
 if (editVolunteerNameForm) {
   editVolunteerNameForm.updateVolunteerNameUseCase = {
-    execute: async ({ volunteerId, name }: { volunteerId: VolunteerId; name: string }) => {
-      const result = new UpdateVolunteerName().execute({ volunteer: { id: volunteerId, name: 'x' }, name })
-      return result
+    execute: async ({ volunteerId, name }: { volunteerId: string; name: string }) => {
+      return { id: volunteerId, name: { value: name } }
     },
   }
 }
 
 if (postForm) {
-  postForm.createPostUseCase = {
-    execute: async ({ name, minVolunteers }: { name: string; minVolunteers: number }) => {
-      const result = new CreatePost().execute({ name, minVolunteers })
-      return result
-    },
-  }
+  postForm.createPostUseCase = new CreatePost()
 }
 
 if (editPostNameForm) {
   editPostNameForm.updatePostNameUseCase = {
-    execute: async ({ postId, name }: { postId: PostId; name: string }) => {
-      const result = new UpdatePostName().execute({ post: { id: postId, name: 'x', minVolunteers: 1, slots: [] }, name })
-      return result
+    execute: async ({ postId, name }: { postId: string; name: string }) => {
+      return { id: postId, name: { value: name } }
     },
   }
 }
 
 if (addSlotForm) {
   addSlotForm.addSlotToPostUseCase = {
-    execute: async ({ postId, day, startTime, endTime }: { postId: PostId; day: string; startTime: string; endTime: string }) => {
-      const result = new AddSlotToPost().execute({ post: { id: postId, name: 'x', minVolunteers: 1, slots: [] }, day, startTime, endTime })
+    execute: async ({ postId, day, startTime, endTime }: { postId: string; day: string; startTime: string; endTime: string }) => {
+      const result = new AddSlotToPost().execute({ post: { id: postId as PostId, name: 'x', minVolunteers: 1, slots: [] }, day, startTime, endTime })
       return result
     },
   }
@@ -118,8 +106,8 @@ if (addSlotForm) {
 
 if (editSlotForm) {
   editSlotForm.updateSlotInPostUseCase = {
-    execute: async ({ postId, slotId, day, startTime, endTime }: { postId: PostId; slotId: SlotId; day: string; startTime: string; endTime: string }) => {
-      const result = new UpdateSlotInPost().execute({ post: { id: postId, name: 'x', minVolunteers: 1, slots: [] }, slotId, day, startTime, endTime })
+    execute: async ({ postId, slotId, day, startTime, endTime }: { postId: string; slotId: string; day: string; startTime: string; endTime: string }) => {
+      const result = new UpdateSlotInPost().execute({ post: { id: postId as PostId, name: 'x', minVolunteers: 1, slots: [] }, slotId: slotId as SlotId, day, startTime, endTime })
       return result
     },
   }
@@ -128,24 +116,69 @@ if (editSlotForm) {
 if (assignForm) {
   assignForm.editionId = EDITION_ID
   assignForm.assignVolunteerUseCase = {
-    execute: async ({ volunteerId, slotId }: { volunteerId: VolunteerId; slotId: SlotId }) => {
-      const result = new AssignVolunteer().execute({ volunteer: { id: volunteerId, name: 'x' }, slot: { id: slotId, postId: 'x' as PostId, window: { day: 'x', startTime: '00:00', endTime: '01:00' } }, schedule: null, editionId: EDITION_ID })
+    execute: async ({ volunteerId, slotId, schedule, editionId }: { volunteerId: string; slotId: string; schedule: unknown; editionId: string }) => {
+      const result = new AssignVolunteer().execute({ volunteer: { id: volunteerId as VolunteerId, name: 'x' }, slot: { id: slotId as SlotId, postId: 'x' as PostId, window: { day: 'x', startTime: '00:00', endTime: '01:00' } }, schedule: schedule as any, editionId: editionId as EditionId })
       return result
     },
   }
 }
 
+// Simple repository implementations for UI refresh
+class InMemoryVolunteerRepo implements VolunteerRepository {
+  constructor(private volunteers: Volunteer[]) {}
+  async save(_volunteer: Volunteer): Promise<void> {}
+  async findById(id: string): Promise<Volunteer | null> {
+    return this.volunteers.find(v => v.id === id) ?? null
+  }
+  async findAll(): Promise<Volunteer[]> {
+    return [...this.volunteers]
+  }
+  async delete(_id: string): Promise<void> {}
+}
+
+class InMemoryPostRepo implements PostRepository {
+  constructor(private posts: Post[]) {}
+  async save(_post: Post): Promise<void> {}
+  async findById(id: string): Promise<Post | null> {
+    return this.posts.find(p => p.id === id) ?? null
+  }
+  async findAll(): Promise<Post[]> {
+    return [...this.posts]
+  }
+  async delete(_id: string): Promise<void> {}
+}
+
+class InMemoryScheduleRepo implements ScheduleRepository {
+  constructor(private schedule: Schedule | null) {}
+  async save(_schedule: Schedule): Promise<void> {}
+  async findById(id: string): Promise<Schedule | null> {
+    return this.schedule?.id === id ? this.schedule : null
+  }
+  async findAll(): Promise<Schedule[]> {
+    return this.schedule ? [this.schedule] : []
+  }
+  async findByEdition(_editionId: string): Promise<Schedule | null> {
+    return this.schedule
+  }
+  async delete(_id: string): Promise<void> {}
+}
+
 // Handle state updates from WebSocket
-ws.onState('crew', ({ volunteers, posts, schedule }: { volunteers: unknown[]; posts: unknown[]; schedule: unknown | null }) => {
+ws.onState('crew', (data: unknown) => {
+  const { volunteers, posts, schedule } = data as { volunteers: unknown[]; posts: unknown[]; schedule: unknown | null }
   const domainVolunteers = volunteers.map((v: unknown) => Volunteer.fromJSON(v as { id: string; name: string }))
-  const domainPosts = posts.map((p: unknown) => Post.fromJSON(p as { id: string; name: string; minVolunteers: number; slots: unknown[] }))
+  const domainPosts = posts.map((p: unknown) => Post.fromJSON(p as { id: string; name: string; minVolunteers: number; slots: { id: string; postId: string; window: { day: string; startTime: string; endTime: string } }[] }))
   const domainSchedule = schedule ? Schedule.fromJSON(schedule as { id: string; editionId: string; assignments: unknown[] }) : null
 
+  const volunteerRepo = new InMemoryVolunteerRepo(domainVolunteers)
+  const postRepo = new InMemoryPostRepo(domainPosts)
+  const scheduleRepo = new InMemoryScheduleRepo(domainSchedule)
+
   if (volunteerList) {
-    volunteerList.refresh({ findAll: () => Promise.resolve(domainVolunteers) })
+    volunteerList.refresh(volunteerRepo)
   }
   if (postList) {
-    postList.refresh({ findAll: () => Promise.resolve(domainPosts) })
+    postList.refresh(postRepo)
   }
   if (addSlotForm) {
     addSlotForm.posts = domainPosts
@@ -156,18 +189,11 @@ ws.onState('crew', ({ volunteers, posts, schedule }: { volunteers: unknown[]; po
   }
 
   if (planningView) {
-    planningView.refresh({
-      scheduleRepo: { findByEdition: () => Promise.resolve(domainSchedule) },
-      volunteerRepo: { findAll: () => Promise.resolve(domainVolunteers) },
-      postRepo: { findAll: () => Promise.resolve(domainPosts) },
-    }, EDITION_ID)
+    planningView.refresh({ scheduleRepo, volunteerRepo, postRepo }, EDITION_ID)
   }
 
   if (statsView) {
-    statsView.refresh({
-      scheduleRepo: { findByEdition: () => Promise.resolve(domainSchedule) },
-      volunteerRepo: { findAll: () => Promise.resolve(domainVolunteers) },
-    }, EDITION_ID)
+    statsView.refresh({ scheduleRepo, volunteerRepo }, EDITION_ID)
   }
 })
 

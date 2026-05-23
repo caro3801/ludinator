@@ -101,7 +101,8 @@ function computeStats(tickets: RawTicket[]): {
 }
 
 // Handle state updates from WebSocket
-ws.onState('mioum', ({ products, tickets, currentTicket }: { products: unknown[]; tickets: RawTicket[]; currentTicket: RawTicket | null }) => {
+ws.onState('mioum', (data: unknown) => {
+  const { products, tickets, currentTicket } = data as { products: unknown[]; tickets: RawTicket[]; currentTicket: RawTicket | null }
   if (productList) {
     productList.refresh(toProductRepo(products as unknown[]))
   }

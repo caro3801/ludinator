@@ -4,16 +4,16 @@ import { PaymentMethod, PaymentMethodValue } from './PaymentMethod'
 import { Price } from './Price'
 import { TicketId, TicketLineId, ProductId } from '../../../shared/types'
 
-interface TicketLineData {
+export interface TicketLineData {
   id: TicketLineId
   productId: ProductId
   productName: string
   unitPrice: number
-  quantity: number,
+  quantity: number
   subtotal: number
 }
 
-interface TicketData {
+export interface TicketData {
   id: TicketId
   lines: TicketLineData[]
   status: 'open' | 'closed' | 'cancelled'

@@ -3,6 +3,7 @@ import { TimeSlot } from './TimeSlot'
 import { ValidationError } from '../errors/ValidationError'
 import { generateId } from '../../../shared/generateId'
 import { ActivityId, SlotId } from "../../../shared/types";
+import {TimeWindow} from "./TimeWindow";
 
 export class Activity {
   #id: ActivityId
@@ -24,7 +25,7 @@ export class Activity {
 
   updateName(raw: string): void { this.#name = new ActivityName(raw) }
 
-  addSlot(window: unknown, { min = null, max = null } = {}): TimeSlot {
+  addSlot(window: TimeWindow, { min = null, max = null } = {}): TimeSlot {
     const slot = TimeSlot.create(this.#id, window, { min, max })
     this.#slots.push(slot)
     return slot

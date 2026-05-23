@@ -9,6 +9,7 @@ import { CloseTicket } from '../../mioum/application/usecases/CloseTicket'
 import { CancelTicket } from '../../mioum/application/usecases/CancelTicket'
 import { ReopenTicket } from '../../mioum/application/usecases/ReopenTicket'
 import { MioumProjection } from './MioumProjection'
+import { PaymentMethodValue } from '../../mioum/domain/model/PaymentMethod'
 import { ProductId, TicketId, TicketLineId } from '../../shared/types'
 
 interface Product {
@@ -31,7 +32,7 @@ interface Ticket {
   id: TicketId
   lines: TicketLine[]
   status: 'open' | 'closed' | 'cancelled'
-  paymentMethod: string | null
+  paymentMethod: PaymentMethodValue | null
   closedAt: number | null
   total: number
 }
@@ -40,7 +41,7 @@ interface CurrentTicket {
   id: TicketId
   lines: TicketLine[]
   status: 'open' | 'closed' | 'cancelled'
-  paymentMethod: string | null
+  paymentMethod: PaymentMethodValue | null
   closedAt: number | null
   total: number
 }
@@ -65,7 +66,7 @@ type DeleteProductPayload = { productId: ProductId }
 type AddLineToTicketPayload = { productId: ProductId; quantity: number }
 type RemoveLineFromTicketPayload = { lineId: TicketLineId }
 type DecrementLineQuantityPayload = { lineId: TicketLineId }
-type CloseTicketPayload = { paymentMethod: string }
+type CloseTicketPayload = { paymentMethod: PaymentMethodValue }
 type CancelTicketPayload = Record<string, never>
 type ReopenTicketPayload = { ticketId: TicketId }
 
