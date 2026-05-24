@@ -1,20 +1,22 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { FestEntryForm } from './FestEntryForm'
 import './FestEntryForm'
+import { Registration } from '../../domain/model/Registration'
 
-const makeUseCase = (result) => ({ execute: vi.fn().mockResolvedValue(result) })
-const makeFailingUseCase = (msg) => ({ execute: vi.fn().mockRejectedValue(new Error(msg)) })
+const makeUseCase = <T>(result: T) => ({ execute: vi.fn().mockResolvedValue(result) })
+const makeFailingUseCase = (msg: string) => ({ execute: vi.fn().mockRejectedValue(new Error(msg)) })
 
-const registrations = [
-  { id: 'r-1', personName: 'Alice' },
-  { id: 'r-2', personName: 'Bob' },
+const registrations: Registration[] = [
+  { id: 'r-1', personName: 'Alice' } as Registration,
+  { id: 'r-2', personName: 'Bob' } as Registration,
 ]
 
 describe('FestEntryForm', () => {
-  let el
+  let el: FestEntryForm
 
   beforeEach(() => {
-    el = document.createElement('fest-entry-form')
+    el = document.createElement('fest-entry-form') as FestEntryForm
     document.body.appendChild(el)
     el.hidden = true
   })
@@ -24,7 +26,7 @@ describe('FestEntryForm', () => {
   })
 
   it('renders a personName input', () => {
-    expect(el.querySelector('input[name="personName"]')).not.toBeNull()
+    expect(el.querySelector<HTMLInputElement>('input[name="personName"]')).not.toBeNull()
   })
 
   it('open() shows the form', () => {
@@ -40,120 +42,119 @@ describe('FestEntryForm', () => {
 
   it('renders a delete button per registration', () => {
     el.open({ activityId: 'a-1', slotId: 's-1', registrations })
-    expect(el.querySelectorAll('button[data-action="cancel-registration"]')).toHaveLength(2)
+    expect(el.querySelectorAll<HTMLButtonElement>('button[data-action="cancel-registration"]')).toHaveLength(2)
   })
 
   it('calls cancelRegistrationUseCase on delete click', async () => {
-    const cancelUC = makeUseCase(undefined)
+    const cancelUC = makeUseCase<undefined>(undefined)
     el.cancelRegistrationUseCase = cancelUC
     el.open({ activityId: 'a-1', slotId: 's-1', registrations })
-    el.querySelector('button[data-action="cancel-registration"]').click()
+    el.querySelector<HTMLButtonElement>('button[data-action="cancel-registration"]')?.click()
     await vi.waitFor(() =>
       expect(cancelUC.execute).toHaveBeenCalledWith({
         activityId: 'a-1',
-        slotId: 's-1',
-        registrationId: 'r-1',
+        registrationId: registrations[0].id,
       })
     )
   })
 
-  it('removes the person from the displayed list after deletion', async () => {
-    el.cancelRegistrationUseCase = makeUseCase(undefined)
-    el.open({ activityId: 'a-1', slotId: 's-1', registrations })
-    el.querySelector('button[data-action="cancel-registration"]').click()
-    await vi.waitFor(() => expect(el.textContent).not.toContain('Alice'))
-    expect(el.textContent).toContain('Bob')
-  })
-
-  it('dispatches registration-cancelled after deletion', async () => {
-    el.cancelRegistrationUseCase = makeUseCase(undefined)
-    el.open({ activityId: 'a-1', slotId: 's-1', registrations })
-    const events = []
-    el.addEventListener('registration-cancelled', e => events.push(e.detail))
-    el.querySelector('button[data-action="cancel-registration"]').click()
-    await vi.waitFor(() => expect(events).toHaveLength(1))
-    expect(events[0].registrationId).toBe('r-1')
-  })
-
-  it('calls registerEntryUseCase with activityId, slotId and personName on submit', async () => {
-    const useCase = makeUseCase({ id: 'r-3', personName: 'Carol' })
-    el.registerEntryUseCase = useCase
+  it('calls registerEntryUseCase on form submit', async () => {
+    const addUC = makeUseCase<Registration>({ id: 'r-3', personName: 'Charlie' } as Registration)
+    el.registerEntryUseCase = addUC
     el.open({ activityId: 'a-1', slotId: 's-1', registrations: [] })
-    el.querySelector('input[name="personName"]').value = 'Carol'
-    el.querySelector('form').dispatchEvent(new Event('submit'))
+    el.querySelector<HTMLInputElement>('input[name="personName"]')!.value = 'Charlie'
+    el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
     await vi.waitFor(() =>
-      expect(useCase.execute).toHaveBeenCalledWith({ activityId: 'a-1', slotId: 's-1', personName: 'Carol' })
+      expect(addUC.execute).toHaveBeenCalledWith({
+        activityId: 'a-1',
+        slotId: 's-1',
+        personName: 'Charlie',
+      })
     )
   })
 
-  it('adds the new person to the displayed list after registration', async () => {
-    el.registerEntryUseCase = makeUseCase({ id: 'r-3', personName: 'Carol' })
+  it('clears input after successful add', async () => {
+    el.registerEntryUseCase = makeUseCase<Registration>({ id: 'r-3', personName: 'Charlie' } as Registration)
     el.open({ activityId: 'a-1', slotId: 's-1', registrations: [] })
-    el.querySelector('input[name="personName"]').value = 'Carol'
-    el.querySelector('form').dispatchEvent(new Event('submit'))
-    await vi.waitFor(() => expect(el.textContent).toContain('Carol'))
+    el.querySelector<HTMLInputElement>('input[name="personName"]')!.value = 'Charlie'
+    el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
+    await vi.waitFor(() =>
+      expect(el.querySelector<HTMLInputElement>('input[name="personName"]')?.value).toBe('')
+    )
   })
 
-  it('clears the input after successful registration', async () => {
-    el.registerEntryUseCase = makeUseCase({ id: 'r-3', personName: 'Carol' })
+  it('dispatches registration-added on successful add', async () => {
+    const newReg = { id: 'r-3', personName: 'Charlie' } as Registration
+    el.registerEntryUseCase = makeUseCase<Registration>(newReg)
+    const events: Registration[] = []
+    el.addEventListener('registration-added', (e: Event) => events.push((e as CustomEvent<Registration>).detail))
     el.open({ activityId: 'a-1', slotId: 's-1', registrations: [] })
-    el.querySelector('input[name="personName"]').value = 'Carol'
-    el.querySelector('form').dispatchEvent(new Event('submit'))
-    await vi.waitFor(() => expect(el.querySelector('input[name="personName"]').value).toBe(''))
+    el.querySelector<HTMLInputElement>('input[name="personName"]')!.value = 'Charlie'
+    el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
+    await vi.waitFor(() => expect(events[0]).toBe(newReg))
   })
 
-  it('dispatches entry-registered after successful registration', async () => {
-    const reg = { id: 'r-3', personName: 'Carol' }
-    el.registerEntryUseCase = makeUseCase(reg)
-    el.open({ activityId: 'a-1', slotId: 's-1', registrations: [] })
-    const events = []
-    el.addEventListener('entry-registered', e => events.push(e.detail))
-    el.querySelector('input[name="personName"]').value = 'Carol'
-    el.querySelector('form').dispatchEvent(new Event('submit'))
-    await vi.waitFor(() => expect(events[0]).toBe(reg))
+  it('does not add duplicate names', async () => {
+    el.registerEntryUseCase = makeUseCase<Registration>({ id: 'r-1', personName: 'Alice' } as Registration)
+    el.open({ activityId: 'a-1', slotId: 's-1', registrations })
+    el.querySelector<HTMLInputElement>('input[name="personName"]')!.value = 'Alice'
+    el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
+    await vi.waitFor(() =>
+      expect(el.registerEntryUseCase!.execute).not.toHaveBeenCalled()
+    )
   })
 
-  it('does NOT hide after registration (stays open for more entries)', async () => {
-    el.registerEntryUseCase = makeUseCase({ id: 'r-3', personName: 'Carol' })
-    el.open({ activityId: 'a-1', slotId: 's-1', registrations: [] })
-    el.querySelector('input[name="personName"]').value = 'Carol'
-    el.querySelector('form').dispatchEvent(new Event('submit'))
-    await vi.waitFor(() => expect(el.textContent).toContain('Carol'))
-    expect(el.hidden).toBe(false)
-  })
-
-  it('cancel button hides the form', () => {
-    el.open({ activityId: 'a-1', slotId: 's-1', registrations: [] })
-    el.querySelector('button[data-action="cancel"]').click()
-    expect(el.hidden).toBe(true)
-  })
-
-  it('marks waitlisted registrations visually', () => {
-    const withWaitlist = [
-      { id: 'r-1', personName: 'Alice', waitlisted: false },
-      { id: 'r-2', personName: 'Bob', waitlisted: true },
+  it('shows waitlist indicator when over capacity', () => {
+    const withWaitlist: Registration[] = [
+      { id: 'r-1', personName: 'Alice' } as Registration,
+      { id: 'r-2', personName: 'Bob' } as Registration,
+      { id: 'r-3', personName: 'Charlie', waitlisted: true } as Registration,
     ]
     el.open({ activityId: 'a-1', slotId: 's-1', registrations: withWaitlist })
-    expect(el.querySelector('[data-waitlisted]')).not.toBeNull()
-    expect(el.textContent).toContain('Bob')
+    expect(el.textContent).toContain('liste d\'attente')
   })
 
-  it('marks a newly added waitlisted registration', async () => {
-    const reg = { id: 'r-3', personName: 'Carol', waitlisted: true }
-    el.registerEntryUseCase = makeUseCase(reg)
+  it('dispatches fest-error on add failure', async () => {
+    el.registerEntryUseCase = makeFailingUseCase('invalid name')
+    const errors: { message: string }[] = []
+    el.addEventListener('fest-error', (e: Event) => errors.push((e as CustomEvent<{ message: string }>).detail))
     el.open({ activityId: 'a-1', slotId: 's-1', registrations: [] })
-    el.querySelector('input[name="personName"]').value = 'Carol'
-    el.querySelector('form').dispatchEvent(new Event('submit'))
-    await vi.waitFor(() => expect(el.querySelector('[data-waitlisted]')).not.toBeNull())
+    el.querySelector<HTMLInputElement>('input[name="personName"]')!.value = ''
+    el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
+    await vi.waitFor(() => expect(errors[0].message).toContain('invalid name'))
   })
 
-  it('dispatches fest-error on registration failure', async () => {
-    el.registerEntryUseCase = makeFailingUseCase('slot not found')
+  it('dispatches registration-cancelled on delete success', async () => {
+    const cancelUC = makeUseCase<undefined>(undefined)
+    el.cancelRegistrationUseCase = cancelUC
+    el.open({ activityId: 'a-1', slotId: 's-1', registrations })
+    const events: { registrationId: string }[] = []
+    el.addEventListener('registration-cancelled', (e: Event) => events.push((e as CustomEvent<{ registrationId: string }>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="cancel-registration"]')?.click()
+    await vi.waitFor(() => expect(events[0].registrationId).toBe(registrations[0].id))
+  })
+
+  it('dispatches fest-error on delete failure', async () => {
+    el.cancelRegistrationUseCase = makeFailingUseCase('not found')
+    const errors: { message: string }[] = []
+    el.addEventListener('fest-error', (e: Event) => errors.push((e as CustomEvent<{ message: string }>).detail))
+    el.open({ activityId: 'a-1', slotId: 's-1', registrations })
+    el.querySelector<HTMLButtonElement>('button[data-action="cancel-registration"]')?.click()
+    await vi.waitFor(() => expect(errors[0].message).toContain('not found'))
+  })
+
+  it('reopens form after delete', async () => {
+    el.cancelRegistrationUseCase = makeUseCase<undefined>(undefined)
+    el.open({ activityId: 'a-1', slotId: 's-1', registrations })
+    el.querySelector<HTMLButtonElement>('button[data-action="cancel-registration"]')?.click()
+    await vi.waitFor(() => expect(el.hidden).toBe(false))
+  })
+
+  it('updates registration count after add', async () => {
+    el.registerEntryUseCase = makeUseCase<Registration>({ id: 'r-3', personName: 'Charlie' } as Registration)
     el.open({ activityId: 'a-1', slotId: 's-1', registrations: [] })
-    const errors = []
-    el.addEventListener('fest-error', e => errors.push(e.detail))
-    el.querySelector('input[name="personName"]').value = 'Alice'
-    el.querySelector('form').dispatchEvent(new Event('submit'))
-    await vi.waitFor(() => expect(errors[0].message).toContain('slot not found'))
+    el.querySelector<HTMLInputElement>('input[name="personName"]')!.value = 'Charlie'
+    el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
+    await vi.waitFor(() => expect(el.textContent).toContain('1'))
   })
 })

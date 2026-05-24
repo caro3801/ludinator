@@ -1,19 +1,21 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest'
+import { FestProgrammeView } from './FestProgrammeView'
 import './FestProgrammeView'
 import { Activity } from '../../domain/model/Activity'
 import { TimeWindow } from '../../domain/model/TimeWindow'
+import type { ActivityRepository } from '../../ports/ActivityRepository'
 
-const repoWith = (activities) => ({ findAll: async () => activities })
+const repoWith = (activities: Activity[]): ActivityRepository => ({ findAll: async () => activities } as unknown as ActivityRepository)
 
 const AT_10H = () => '10:00'
 const AT_14H = () => '14:00'
 
 describe('FestProgrammeView', () => {
-  let el
+  let el: FestProgrammeView
 
   beforeEach(() => {
-    el = document.createElement('fest-programme-view')
+    el = document.createElement('fest-programme-view') as FestProgrammeView
     document.body.appendChild(el)
   })
 
@@ -36,7 +38,7 @@ describe('FestProgrammeView', () => {
     a.addSlot(new TimeWindow('saturday', '10:00', '12:00'))
     a.addSlot(new TimeWindow('sunday', '14:00', '16:00'))
     await el.refresh(repoWith([a]), { nowFn: AT_10H })
-    expect(el.querySelectorAll('[data-day]')).toHaveLength(2)
+    expect(Array.from(el.querySelectorAll('[data-day]'))).toHaveLength(2)
   })
 
   it('sorts slots within a day by startTime', async () => {
@@ -44,7 +46,7 @@ describe('FestProgrammeView', () => {
     a.addSlot(new TimeWindow('saturday', '14:00', '16:00'))
     a.addSlot(new TimeWindow('saturday', '09:00', '11:00'))
     await el.refresh(repoWith([a]), { nowFn: AT_10H })
-    const slots = el.querySelectorAll('[data-slot]')
+    const slots = Array.from(el.querySelectorAll('[data-slot]'))
     expect(slots[0].textContent).toContain('09:00')
     expect(slots[1].textContent).toContain('14:00')
   })
@@ -63,49 +65,49 @@ describe('FestProgrammeView', () => {
     const a = Activity.create('Quiz')
     const slot = a.addSlot(new TimeWindow('saturday', '10:00', '12:00'), { max: 1 })
     slot.addRegistration('Alice')
-    slot.addRegistration('Bob') // waitlisted
+    slot.addRegistration('Bob')
     await el.refresh(repoWith([a]), { nowFn: AT_10H })
-    expect(el.querySelector('[data-overcapacity]')).not.toBeNull()
+    expect(el.querySelector<HTMLElement>('[data-overcapacity]')).not.toBeNull()
   })
 
   it('renders a hide-past toggle button', async () => {
     await el.refresh(repoWith([]), { nowFn: AT_10H })
-    expect(el.querySelector('button[data-action="toggle-past"]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="toggle-past"]')).not.toBeNull()
   })
 
   describe('hide past filter', () => {
-    let activity
+    let activity: Activity
 
     beforeEach(async () => {
       activity = Activity.create('Quiz')
-      activity.addSlot(new TimeWindow('saturday', '09:00', '10:00')) // ends at 10:00 → past at 14:00
-      activity.addSlot(new TimeWindow('saturday', '13:00', '15:00')) // ends at 15:00 → future at 14:00
+      activity.addSlot(new TimeWindow('saturday', '09:00', '10:00'))
+      activity.addSlot(new TimeWindow('saturday', '13:00', '15:00'))
       await el.refresh(repoWith([activity]), { nowFn: AT_14H })
     })
 
     it('shows all slots by default', () => {
-      expect(el.querySelectorAll('[data-slot]')).toHaveLength(2)
+      expect(Array.from(el.querySelectorAll('[data-slot]'))).toHaveLength(2)
     })
 
     it('hides past slots when filter is toggled on', () => {
-      el.querySelector('button[data-action="toggle-past"]').click()
-      expect(el.querySelectorAll('[data-slot]')).toHaveLength(1)
+      el.querySelector<HTMLButtonElement>('button[data-action="toggle-past"]')?.click()
+      expect(Array.from(el.querySelectorAll('[data-slot]'))).toHaveLength(1)
       expect(el.textContent).not.toContain('09:00')
       expect(el.textContent).toContain('13:00')
     })
 
     it('restores all slots when filter is toggled off again', () => {
-      el.querySelector('button[data-action="toggle-past"]').click()
-      el.querySelector('button[data-action="toggle-past"]').click()
-      expect(el.querySelectorAll('[data-slot]')).toHaveLength(2)
+      el.querySelector<HTMLButtonElement>('button[data-action="toggle-past"]')?.click()
+      el.querySelector<HTMLButtonElement>('button[data-action="toggle-past"]')?.click()
+      expect(Array.from(el.querySelectorAll('[data-slot]'))).toHaveLength(2)
     })
 
     it('a slot ending exactly at current time is considered past', async () => {
       const a = Activity.create('Test')
       a.addSlot(new TimeWindow('saturday', '13:00', '14:00'))
       await el.refresh(repoWith([a]), { nowFn: AT_14H })
-      el.querySelector('button[data-action="toggle-past"]').click()
-      expect(el.querySelectorAll('[data-slot]')).toHaveLength(0)
+      el.querySelector<HTMLButtonElement>('button[data-action="toggle-past"]')?.click()
+      expect(Array.from(el.querySelectorAll('[data-slot]'))).toHaveLength(0)
     })
   })
 })

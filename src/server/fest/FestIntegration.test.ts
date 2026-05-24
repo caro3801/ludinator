@@ -1,29 +1,34 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { EventStore } from '../EventStore'
 import { CommandDispatcher } from '../CommandDispatcher'
+import { ServerWebSocket, Server } from 'bun'
 
 describe('Fest integration', () => {
-  let store, dispatcher, server, ws1, ws2
+  let store: EventStore
+  let dispatcher: CommandDispatcher
+  let server: Server<unknown>
+  let ws1: WebSocket
+  let ws2: WebSocket
 
   beforeAll(async () => {
     store = new EventStore(':memory:')
     dispatcher = new CommandDispatcher(store)
-    const clients = new Set()
+    const clients = new Set<ServerWebSocket<unknown>>()
 
-    server = Bun.serve({
+    server = Bun.serve<unknown>({
       port: 0,
-      fetch(req, srv) { if (srv.upgrade(req)) return },
+      fetch(req: globalThis.Request, server: any) { if (server.upgrade(req)) return },
       websocket: {
-        async open(ws) {
+        async open(ws: ServerWebSocket<unknown>) {
           clients.add(ws)
           const snapshots = dispatcher.snapshots()
           for (const { module, data } of snapshots)
             ws.send(JSON.stringify({ type: 'state', module, data }))
         },
-        async message(ws, raw) {
+        async message(ws: ServerWebSocket<unknown>, raw: string) {
           await dispatcher.handle(ws, JSON.parse(raw), clients)
         },
-        close(ws) { clients.delete(ws) },
+        close(ws: ServerWebSocket<unknown>) { clients.delete(ws) },
       },
     })
 
@@ -44,9 +49,9 @@ describe('Fest integration', () => {
 
   it('sends initial fest snapshot on connection', async () => {
     const ws3 = new WebSocket(`ws://localhost:${server.port}`)
-    const snapshot = await new Promise(resolve => {
+    const snapshot = await new Promise<{ activities: unknown[], entryLog: unknown }>(resolve => {
       ws3.onmessage = ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'fest') resolve(msg.data)
       }
     })
@@ -56,15 +61,15 @@ describe('Fest integration', () => {
   })
 
   it('creates an activity and broadcasts to all clients', async () => {
-    const promise1 = new Promise(resolve => {
+    const promise1 = new Promise<{ activities: { name: string, location: string }[] }>(resolve => {
       ws1.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'fest' && msg.data.activities.length > 0) resolve(msg.data)
       })
     })
-    const promise2 = new Promise(resolve => {
+    const promise2 = new Promise<{ activities: { name: string, location: string }[] }>(resolve => {
       ws2.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'fest' && msg.data.activities.length > 0) resolve(msg.data)
       })
     })
@@ -77,22 +82,23 @@ describe('Fest integration', () => {
   })
 
   it('full activity flow: create, add slot, register', async () => {
-    const slotStatePromise = new Promise(resolve => {
+    const slotStatePromise = new Promise<{ activities: { slots: unknown[] }[] }>(resolve => {
       ws1.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'fest' && msg.data.activities[0]?.slots?.length > 0) resolve(msg.data)
       })
     })
-    const activityId = dispatcher.snapshots().find(s => s.module === 'fest').data.activities[0].id
+    const state = dispatcher.snapshots().find(s => s.module === 'fest')!.data as { activities: { id: string }[] }
+    const activityId = state.activities[0].id
     ws1.send(JSON.stringify({ id: 'cmd-2', module: 'fest', action: 'AddSlotToActivity', payload: { activityId, day: 'saturday', startTime: '10:00', endTime: '12:00' } }))
     await slotStatePromise
 
-    const state1 = dispatcher.snapshots().find(s => s.module === 'fest').data
+    const state1 = dispatcher.snapshots().find(s => s.module === 'fest')!.data as { activities: { slots: { id: string }[] }[] }
     const slotId = state1.activities[0].slots[0].id
 
-    const regStatePromise = new Promise(resolve => {
+    const regStatePromise = new Promise<{ activities: { slots: { registrations: { personName: string }[] }[] }[] }>(resolve => {
       ws1.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'fest' && msg.data.activities[0]?.slots[0]?.registrations?.length > 0) resolve(msg.data)
       })
     })
@@ -103,21 +109,21 @@ describe('Fest integration', () => {
   })
 
   it('entry log flow: add sub-counter and record entries', async () => {
-    const subCounterStatePromise = new Promise(resolve => {
+    const subCounterStatePromise = new Promise<{ entryLog: { subCounters: { id: string }[] } | null }>(resolve => {
       ws1.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'fest' && msg.data.entryLog?.subCounters?.length > 0) resolve(msg.data)
       })
     })
     ws1.send(JSON.stringify({ id: 'cmd-4', module: 'fest', action: 'AddSubCounter', payload: { label: 'Samedi' } }))
     await subCounterStatePromise
 
-    const state = dispatcher.snapshots().find(s => s.module === 'fest').data
+    const state = dispatcher.snapshots().find(s => s.module === 'fest')!.data as { entryLog: { subCounters: { id: string }[] } }
     const subCounterId = state.entryLog.subCounters[0].id
 
-    const entriesStatePromise = new Promise(resolve => {
+    const entriesStatePromise = new Promise<{ entryLog: { subCounters: { batches: { adults: number }[] }[] } }>(resolve => {
       ws1.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'fest' && msg.data.entryLog?.subCounters[0]?.batches?.length > 0) resolve(msg.data)
       })
     })
@@ -128,9 +134,9 @@ describe('Fest integration', () => {
   })
 
   it('validation error returns ok:false ack', async () => {
-    const ackPromise = new Promise(resolve => {
+    const ackPromise = new Promise<{ ok: boolean, error?: string }>(resolve => {
       ws1.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.id === 'cmd-err') resolve(msg)
       })
     })

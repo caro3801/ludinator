@@ -48,7 +48,7 @@ describe('FestProjection', () => {
     store.append({ id: '1', module: 'fest', type: 'SubCounterAdded', aggregateId: log.id, payload: log.toJSON(), occurredAt: new Date().toISOString() })
     const state = new FestProjection(store).rebuild()
     expect(state.entryLog).not.toBeNull()
-    expect(state.entryLog.subCounters).toHaveLength(1)
+    expect(state.entryLog!.subCounters).toHaveLength(1)
   })
 
   it('adds slot from SlotAddedToActivity', () => {
