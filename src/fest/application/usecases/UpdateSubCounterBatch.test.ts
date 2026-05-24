@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { UpdateSubCounterBatch } from './UpdateSubCounterBatch'
 import { SubCounterBatchUpdated } from '../../domain/events'
 import { EntryLog } from '../../domain/model/EntryLog'
+import type { EntryLogData } from '../../domain/model/EntryLog'
 
 describe('UpdateSubCounterBatch', () => {
   it('emits SubCounterBatchUpdated with updated batch', () => {
@@ -11,9 +12,10 @@ describe('UpdateSubCounterBatch', () => {
     const batchId = batch.id
     const subCounterId = sc.id
 
-    const event = new UpdateSubCounterBatch().execute({ entryLog: log.toJSON(), subCounterId, batchId, adults: 5, children: 3, families: 0 })
+    const entryLog = log.toJSON() as EntryLogData
+    const event = new UpdateSubCounterBatch().execute({ entryLog, subCounterId, batchId, adults: 5, children: 3, families: 0 })
     expect(event).toBeInstanceOf(SubCounterBatchUpdated)
-    const batches = event.payload.subCounters[0].batches
+    const batches = (event.payload as { subCounters: { batches: { adults: number }[] }[] }).subCounters[0].batches
     expect(batches[0].adults).toBe(5)
   })
 })

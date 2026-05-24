@@ -8,7 +8,7 @@ describe('RegisterToActivity', () => {
   const makeActivity = () => {
     const a = Activity.create('Quiz')
     a.addSlot(new TimeWindow('saturday', '10:00', '12:00'))
-    return a.toJSON()
+    return a.toJSON() as { id: string; name: string; location: string | null; slots: { id: string; registrations: unknown[] }[] }
   }
 
   it('emits RegistrationAdded with registration in slot', () => {
@@ -16,8 +16,8 @@ describe('RegisterToActivity', () => {
     const slotId = activity.slots[0].id
     const event = new RegisterToActivity().execute({ activity, slotId, personName: 'Alice' })
     expect(event).toBeInstanceOf(RegistrationAdded)
-    expect(event.payload.slots[0].registrations).toHaveLength(1)
-    expect(event.payload.slots[0].registrations[0].personName).toBe('Alice')
+    expect((event.payload as { slots: { registrations: { personName: string }[] }[] }).slots[0].registrations).toHaveLength(1)
+    expect((event.payload as { slots: { registrations: { personName: string }[] }[] }).slots[0].registrations[0].personName).toBe('Alice')
   })
 
   it('throws when slot not found', () => {
