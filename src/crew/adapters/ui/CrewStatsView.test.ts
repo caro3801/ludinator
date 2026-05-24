@@ -4,6 +4,7 @@ import { CrewStatsView } from './CrewStatsView'
 import './CrewStatsView'
 import type { ScheduleRepository } from '../../ports/ScheduleRepository'
 import type { VolunteerRepository } from '../../ports/VolunteerRepository'
+import type { PostRepository } from '../../ports/PostRepository'
 import { Schedule } from '../../domain/model/Schedule'
 import { Volunteer } from '../../domain/model/Volunteer'
 import { Post } from '../../domain/model/Post'
@@ -12,16 +13,20 @@ import { TimeSlot } from '../../domain/model/TimeSlot'
 
 const makeRepos = ({
   schedule = null,
-  volunteers = []
+  volunteers = [],
+  posts = []
 }: {
   schedule?: Schedule | null
   volunteers?: Volunteer[]
+  posts?: Post[]
 } = {}): {
   scheduleRepo: ScheduleRepository
   volunteerRepo: VolunteerRepository
+  postRepo: PostRepository
 } => ({
   scheduleRepo: { findByEdition: async () => schedule, save: async () => {}, findById: async () => null, findAll: async () => [], delete: async () => {} } as unknown as ScheduleRepository,
   volunteerRepo: { findAll: async () => volunteers, save: async () => {}, findById: async () => null, delete: async () => {} } as unknown as VolunteerRepository,
+  postRepo: { findAll: async () => posts, save: async () => {}, findById: async () => null, delete: async () => {} } as unknown as PostRepository,
 })
 
 describe('CrewStatsView', () => {
@@ -50,7 +55,7 @@ describe('CrewStatsView', () => {
     const slot: TimeSlot = accueil.addSlot(new TimeWindow('saturday', '09:00', '12:00'))
     schedule.assign(alice, slot)
 
-    await el.refresh(makeRepos({ schedule, volunteers: [alice, bob] }), 'edition-2024')
+    await el.refresh(makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil] }), 'edition-2024')
     expect(el.querySelectorAll<HTMLTableRowElement>('tr[data-volunteer-id]')).toHaveLength(2)
   })
 
@@ -58,7 +63,7 @@ describe('CrewStatsView', () => {
     const slot: TimeSlot = accueil.addSlot(new TimeWindow('saturday', '09:00', '12:00'))
     schedule.assign(alice, slot)
 
-    await el.refresh(makeRepos({ schedule, volunteers: [alice] }), 'edition-2024')
+    await el.refresh(makeRepos({ schedule, volunteers: [alice], posts: [accueil] }), 'edition-2024')
     expect(el.textContent).toContain('Alice')
   })
 
@@ -66,7 +71,7 @@ describe('CrewStatsView', () => {
     const slot: TimeSlot = accueil.addSlot(new TimeWindow('saturday', '09:00', '12:00'))
     schedule.assign(alice, slot)
 
-    await el.refresh(makeRepos({ schedule, volunteers: [alice] }), 'edition-2024')
+    await el.refresh(makeRepos({ schedule, volunteers: [alice], posts: [accueil] }), 'edition-2024')
     expect(el.textContent).toContain('3h')
   })
 
@@ -74,7 +79,7 @@ describe('CrewStatsView', () => {
     const slot: TimeSlot = accueil.addSlot(new TimeWindow('saturday', '09:00', '12:00'))
     schedule.assign(alice, slot)
 
-    await el.refresh(makeRepos({ schedule, volunteers: [alice, bob] }), 'edition-2024')
+    await el.refresh(makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil] }), 'edition-2024')
     expect(el.textContent).toContain('1 / 2')
   })
 
@@ -82,7 +87,7 @@ describe('CrewStatsView', () => {
     const slot: TimeSlot = accueil.addSlot(new TimeWindow('saturday', '09:00', '12:00'))
     schedule.assign(alice, slot)
 
-    await el.refresh(makeRepos({ schedule, volunteers: [alice] }), 'edition-2024')
+    await el.refresh(makeRepos({ schedule, volunteers: [alice], posts: [accueil] }), 'edition-2024')
     expect(el.textContent).toContain('Accueil')
     expect(el.textContent).toContain('1 / 2')
   })
@@ -90,8 +95,9 @@ describe('CrewStatsView', () => {
   it('marks posts as fully staffed when all slots are filled', async () => {
     const slot: TimeSlot = accueil.addSlot(new TimeWindow('saturday', '09:00', '12:00'))
     schedule.assign(alice, slot)
+    schedule.assign(bob, slot)
 
-    await el.refresh(makeRepos({ schedule, volunteers: [alice, bob] }), 'edition-2024')
+    await el.refresh(makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil] }), 'edition-2024')
     const row = el.querySelector<HTMLTableRowElement>('tr[data-post-id]')
     expect(row?.textContent).toContain('Complet')
   })
@@ -99,7 +105,7 @@ describe('CrewStatsView', () => {
   it('marks posts as understaffed when slots remain', async () => {
     const slot: TimeSlot = accueil.addSlot(new TimeWindow('saturday', '09:00', '12:00'))
 
-    await el.refresh(makeRepos({ schedule, volunteers: [] }), 'edition-2024')
+    await el.refresh(makeRepos({ schedule, volunteers: [], posts: [accueil] }), 'edition-2024')
     const row = el.querySelector<HTMLTableRowElement>('tr[data-post-id]')
     expect(row?.textContent).toContain('Incomplet')
   })
