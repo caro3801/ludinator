@@ -1,19 +1,46 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest'
+import { CrewPlanningView } from './CrewPlanningView'
 import './CrewPlanningView'
+import type { ScheduleRepository } from '../../ports/ScheduleRepository'
+import type { VolunteerRepository } from '../../ports/VolunteerRepository'
+import type { PostRepository } from '../../ports/PostRepository'
 import { Schedule } from '../../domain/model/Schedule'
 import { Volunteer } from '../../domain/model/Volunteer'
 import { Post } from '../../domain/model/Post'
 import { TimeWindow } from '../../domain/model/TimeWindow'
+import { TimeSlot } from '../../domain/model/TimeSlot'
 
-const makeRepos = ({ schedule = null, volunteers = [], posts = [] } = {}) => ({
-  scheduleRepo: { findByEdition: async () => schedule },
-  volunteerRepo: { findAll: async () => volunteers },
-  postRepo: { findAll: async () => posts },
+const makeRepos = ({
+  schedule = null,
+  volunteers = [],
+  posts = []
+}: {
+  schedule?: Schedule | null
+  volunteers?: Volunteer[]
+  posts?: Post[]
+} = {}): {
+  scheduleRepo: ScheduleRepository
+  volunteerRepo: VolunteerRepository
+  postRepo: PostRepository
+} => ({
+  scheduleRepo: { findByEdition: async () => schedule, save: async () => {}, findById: async () => null, findAll: async () => [], delete: async () => {} } as unknown as ScheduleRepository,
+  volunteerRepo: { findAll: async () => volunteers, save: async () => {}, findById: async () => null, delete: async () => {} } as unknown as VolunteerRepository,
+  postRepo: { findAll: async () => posts, save: async () => {}, findById: async () => null, delete: async () => {} } as unknown as PostRepository,
 })
 
+interface AssignSlotRequestedDetail {
+  slotId: string
+  postId: string
+}
+
 describe('CrewPlanningView', () => {
-  let el, alice, accueil, satSlot, sunSlot, schedule
+  let el: CrewPlanningView
+  let alice: Volunteer
+  let accueil: Post
+  let satSlot: TimeSlot
+  let sunSlot: TimeSlot
+  let schedule: Schedule
 
   beforeEach(() => {
     alice = Volunteer.create('Alice')
@@ -24,14 +51,14 @@ describe('CrewPlanningView', () => {
     schedule.assign(alice, satSlot)
     schedule.assign(alice, sunSlot)
 
-    el = document.createElement('crew-planning-view')
+    el = document.createElement('crew-planning-view') as CrewPlanningView
     document.body.appendChild(el)
   })
 
   it('renders mode toggle buttons', async () => {
     await el.refresh(makeRepos(), 'edition-2024')
-    const buttons = el.querySelectorAll('button[data-mode]')
-    expect([...buttons].map(b => b.dataset.mode)).toEqual(['post', 'volunteer'])
+    const buttons = el.querySelectorAll<HTMLButtonElement>('button[data-mode]')
+    expect(Array.from(buttons).map(b => b.dataset.mode)).toEqual(['post', 'volunteer'])
   })
 
   it('renders a day filter populated from the data', async () => {
@@ -39,8 +66,8 @@ describe('CrewPlanningView', () => {
       makeRepos({ schedule, volunteers: [alice], posts: [accueil] }),
       'edition-2024'
     )
-    const dayButtons = el.querySelectorAll('button[data-day]')
-    const days = [...dayButtons].map(b => b.dataset.day)
+    const dayButtons = el.querySelectorAll<HTMLButtonElement>('button[data-day]')
+    const days = Array.from(dayButtons).map(b => b.dataset.day)
     expect(days).toContain('all')
     expect(days).toContain('saturday')
     expect(days).toContain('sunday')
@@ -51,8 +78,8 @@ describe('CrewPlanningView', () => {
       makeRepos({ schedule, volunteers: [alice], posts: [accueil] }),
       'edition-2024'
     )
-    expect(el.querySelector('button[data-mode="post"]').classList).toContain('active')
-    expect(el.querySelector('button[data-day="all"]').classList).toContain('active')
+    expect(el.querySelector<HTMLButtonElement>('button[data-mode="post"]')?.classList).toContain('active')
+    expect(el.querySelector<HTMLButtonElement>('button[data-day="all"]')?.classList).toContain('active')
     expect(el.textContent).toContain('saturday')
     expect(el.textContent).toContain('sunday')
   })
@@ -62,9 +89,9 @@ describe('CrewPlanningView', () => {
       makeRepos({ schedule, volunteers: [alice], posts: [accueil] }),
       'edition-2024'
     )
-    el.querySelector('button[data-day="saturday"]').click()
+    el.querySelector<HTMLButtonElement>('button[data-day="saturday"]')?.click()
 
-    const content = el.querySelector('.planning-content').textContent
+    const content = el.querySelector<HTMLElement>('.planning-content')?.textContent
     expect(content).toContain('saturday')
     expect(content).not.toContain('sunday')
   })
@@ -74,10 +101,10 @@ describe('CrewPlanningView', () => {
       makeRepos({ schedule, volunteers: [alice], posts: [accueil] }),
       'edition-2024'
     )
-    el.querySelector('button[data-day="saturday"]').click()
-    el.querySelector('button[data-day="all"]').click()
+    el.querySelector<HTMLButtonElement>('button[data-day="saturday"]')?.click()
+    el.querySelector<HTMLButtonElement>('button[data-day="all"]')?.click()
 
-    const content = el.querySelector('.planning-content').textContent
+    const content = el.querySelector<HTMLElement>('.planning-content')?.textContent
     expect(content).toContain('saturday')
     expect(content).toContain('sunday')
   })
@@ -87,10 +114,10 @@ describe('CrewPlanningView', () => {
       makeRepos({ schedule, volunteers: [alice], posts: [accueil] }),
       'edition-2024'
     )
-    el.querySelector('button[data-day="saturday"]').click()
-    el.querySelector('button[data-mode="volunteer"]').click()
+    el.querySelector<HTMLButtonElement>('button[data-day="saturday"]')?.click()
+    el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
 
-    const content = el.querySelector('.planning-content').textContent
+    const content = el.querySelector<HTMLElement>('.planning-content')?.textContent
     expect(content).toContain('saturday')
     expect(content).not.toContain('sunday')
   })
@@ -98,13 +125,13 @@ describe('CrewPlanningView', () => {
   it('does not re-fetch when switching mode or day', async () => {
     let callCount = 0
     const repos = {
-      scheduleRepo: { findByEdition: async () => { callCount++; return schedule } },
-      volunteerRepo: { findAll: async () => [alice] },
-      postRepo: { findAll: async () => [accueil] },
+      scheduleRepo: { findByEdition: async () => { callCount++; return schedule }, save: async () => {}, findById: async () => null, findAll: async () => [], delete: async () => {} } as unknown as ScheduleRepository,
+      volunteerRepo: { findAll: async () => [alice], save: async () => {}, findById: async () => null, delete: async () => {} } as unknown as VolunteerRepository,
+      postRepo: { findAll: async () => [accueil], save: async () => {}, findById: async () => null, delete: async () => {} } as unknown as PostRepository,
     }
     await el.refresh(repos, 'edition-2024')
-    el.querySelector('button[data-mode="volunteer"]').click()
-    el.querySelector('button[data-day="saturday"]').click()
+    el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
+    el.querySelector<HTMLButtonElement>('button[data-day="saturday"]')?.click()
 
     expect(callCount).toBe(1)
   })
@@ -125,7 +152,7 @@ describe('CrewPlanningView', () => {
         'edition-2024'
       )
 
-      expect(el.querySelector('[data-conflict]')).not.toBeNull()
+      expect(el.querySelector<HTMLElement>('[data-conflict]')).not.toBeNull()
     })
 
     it('includes a tooltip describing the conflicting slot', async () => {
@@ -138,8 +165,8 @@ describe('CrewPlanningView', () => {
         'edition-2024'
       )
 
-      const indicator = el.querySelector('[data-conflict]')
-      expect(indicator.title).toContain('Bar')
+      const indicator = el.querySelector<HTMLElement>('[data-conflict]')
+      expect(indicator?.getAttribute('title')).toContain('Bar')
     })
 
     it('shows conflict indicator in volunteer mode too', async () => {
@@ -151,9 +178,9 @@ describe('CrewPlanningView', () => {
         makeRepos({ schedule, volunteers: [alice], posts: [accueil, bar] }),
         'edition-2024'
       )
-      el.querySelector('button[data-mode="volunteer"]').click()
+      el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
 
-      expect(el.querySelector('[data-conflict]')).not.toBeNull()
+      expect(el.querySelector<HTMLElement>('[data-conflict]')).not.toBeNull()
     })
 
     it('does not show conflict indicator when no conflicts exist', async () => {
@@ -161,7 +188,7 @@ describe('CrewPlanningView', () => {
         makeRepos({ schedule, volunteers: [alice], posts: [accueil] }),
         'edition-2024'
       )
-      expect(el.querySelector('[data-conflict]')).toBeNull()
+      expect(el.querySelector<HTMLElement>('[data-conflict]')).toBeNull()
     })
   })
 
@@ -182,7 +209,7 @@ describe('CrewPlanningView', () => {
         makeRepos({ schedule, volunteers: [alice], posts: [accueil] }),
         'edition-2024'
       )
-      el.querySelector('button[data-mode="volunteer"]').click()
+      el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
       expect(el.textContent).toContain('Alice')
       expect(el.textContent).toContain('Accueil')
     })
@@ -192,9 +219,9 @@ describe('CrewPlanningView', () => {
         makeRepos({ schedule, volunteers: [alice], posts: [accueil] }),
         'edition-2024'
       )
-      el.querySelector('button[data-mode="volunteer"]').click()
+      el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
       const text = el.textContent
-      expect(text.indexOf('09:00')).toBeLessThan(text.indexOf('10:00'))
+      expect(text?.indexOf('09:00')).toBeLessThan(text?.indexOf('10:00') ?? 0)
     })
 
     it('shows placeholder for volunteer with no assignment', async () => {
@@ -203,7 +230,7 @@ describe('CrewPlanningView', () => {
         makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil] }),
         'edition-2024'
       )
-      el.querySelector('button[data-mode="volunteer"]').click()
+      el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
       expect(el.textContent).toContain('Aucun créneau')
     })
   })
@@ -211,11 +238,10 @@ describe('CrewPlanningView', () => {
   describe('understaffed filter', () => {
     it('renders the understaffed filter button', async () => {
       await el.refresh(makeRepos({ schedule, volunteers: [alice], posts: [accueil] }), 'edition-2024')
-      expect(el.querySelector('button[data-filter="understaffed"]')).not.toBeNull()
+      expect(el.querySelector<HTMLButtonElement>('button[data-filter="understaffed"]')).not.toBeNull()
     })
 
     it('when active, hides fully-staffed slots in by-post mode', async () => {
-      // bar has minVolunteers=1, alice is assigned → fully staffed
       const bar = Post.create('Bar', 1)
       const barSlot = bar.addSlot(new TimeWindow('saturday', '14:00', '16:00'))
       schedule.assign(alice, barSlot)
@@ -224,11 +250,11 @@ describe('CrewPlanningView', () => {
         makeRepos({ schedule, volunteers: [alice], posts: [accueil, bar] }),
         'edition-2024'
       )
-      el.querySelector('button[data-filter="understaffed"]').click()
+      el.querySelector<HTMLButtonElement>('button[data-filter="understaffed"]')?.click()
 
-      const content = el.querySelector('.planning-content').textContent
-      expect(content).toContain('Accueil') // minVolunteers=2, only 1 assigned → understaffed
-      expect(content).not.toContain('Bar')  // minVolunteers=1, 1 assigned → fully staffed
+      const content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Accueil')
+      expect(content).not.toContain('Bar')
     })
 
     it('toggling again disables the filter', async () => {
@@ -240,10 +266,10 @@ describe('CrewPlanningView', () => {
         makeRepos({ schedule, volunteers: [alice], posts: [accueil, bar] }),
         'edition-2024'
       )
-      el.querySelector('button[data-filter="understaffed"]').click()
-      el.querySelector('button[data-filter="understaffed"]').click()
+      el.querySelector<HTMLButtonElement>('button[data-filter="understaffed"]')?.click()
+      el.querySelector<HTMLButtonElement>('button[data-filter="understaffed"]')?.click()
 
-      const content = el.querySelector('.planning-content').textContent
+      const content = el.querySelector<HTMLElement>('.planning-content')?.textContent
       expect(content).toContain('Bar')
     })
   })
@@ -251,15 +277,15 @@ describe('CrewPlanningView', () => {
   describe('"+" button per slot', () => {
     it('renders a "+" button per slot in by-post mode', async () => {
       await el.refresh(makeRepos({ schedule, volunteers: [alice], posts: [accueil] }), 'edition-2024')
-      expect(el.querySelector('button[data-action="add-assignment"]')).not.toBeNull()
+      expect(el.querySelector<HTMLButtonElement>('button[data-action="add-assignment"]')).not.toBeNull()
     })
 
     it('dispatches assign-slot-requested with slotId and postId when clicked', async () => {
       await el.refresh(makeRepos({ schedule, volunteers: [alice], posts: [accueil] }), 'edition-2024')
 
-      const events = []
-      el.addEventListener('assign-slot-requested', e => events.push(e.detail))
-      el.querySelector('button[data-action="add-assignment"]').click()
+      const events: AssignSlotRequestedDetail[] = []
+      el.addEventListener('assign-slot-requested', (e: Event) => events.push((e as CustomEvent<AssignSlotRequestedDetail>).detail))
+      el.querySelector<HTMLButtonElement>('button[data-action="add-assignment"]')?.click()
 
       expect(events[0].slotId).toBe(satSlot.id)
       expect(events[0].postId).toBe(accueil.id)
@@ -267,8 +293,8 @@ describe('CrewPlanningView', () => {
 
     it('does not render "+" button in by-volunteer mode', async () => {
       await el.refresh(makeRepos({ schedule, volunteers: [alice], posts: [accueil] }), 'edition-2024')
-      el.querySelector('button[data-mode="volunteer"]').click()
-      expect(el.querySelector('button[data-action="add-assignment"]')).toBeNull()
+      el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
+      expect(el.querySelector<HTMLButtonElement>('button[data-action="add-assignment"]')).toBeNull()
     })
   })
 })

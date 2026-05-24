@@ -1,26 +1,45 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest'
+import { CrewPostList } from './CrewPostList'
 import './CrewPostList'
+import type { PostRepository } from '../../ports/PostRepository'
 
-const repoWith = (posts) => ({ findAll: async () => posts })
+interface PostJSON {
+  id: string
+  name: { value: string }
+  minVolunteers: number
+  slots: { id: string, window: { day: string, startTime: string, endTime: string } }[]
+}
 
-const makeSlot = (day, startTime, endTime) => ({
+interface SlotJSON {
+  id: string
+  window: { day: string, startTime: string, endTime: string }
+}
+
+const makeSlot = (day: string, startTime: string, endTime: string): SlotJSON => ({
   id: crypto.randomUUID(),
   window: { day, startTime, endTime },
 })
 
-const makePost = (name, minVolunteers, slots = []) => ({
+const makePost = (name: string, minVolunteers: number, slots: SlotJSON[] = []): PostJSON => ({
   id: crypto.randomUUID(),
   name: { value: name },
   minVolunteers,
   slots,
 })
 
+const repoWith = (posts: PostJSON[]): PostRepository => ({
+  findAll: async () => posts,
+  save: async () => {},
+  findById: async () => null,
+  delete: async () => {},
+} as unknown as PostRepository)
+
 describe('CrewPostList', () => {
-  let el
+  let el: CrewPostList
 
   beforeEach(() => {
-    el = document.createElement('crew-post-list')
+    el = document.createElement('crew-post-list') as CrewPostList
     document.body.appendChild(el)
   })
 
@@ -37,21 +56,21 @@ describe('CrewPostList', () => {
 
   it('renders a delete button per post', async () => {
     await el.refresh(repoWith([makePost('Accueil', 2)]))
-    expect(el.querySelector('button[data-action="delete-post"]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="delete-post"]')).not.toBeNull()
   })
 
   it('renders an edit-name button per post', async () => {
     await el.refresh(repoWith([makePost('Accueil', 2)]))
-    expect(el.querySelector('button[data-action="edit-post-name"]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="edit-post-name"]')).not.toBeNull()
   })
 
   it('dispatches post-delete-requested with postId on delete click', async () => {
     const post = makePost('Accueil', 2)
     await el.refresh(repoWith([post]))
 
-    const events = []
-    el.addEventListener('post-delete-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="delete-post"]').click()
+    const events: { postId: string }[] = []
+    el.addEventListener('post-delete-requested', (e: Event) => events.push((e as CustomEvent<{ postId: string }>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="delete-post"]')?.click()
 
     expect(events[0].postId).toBe(post.id)
   })
@@ -60,9 +79,9 @@ describe('CrewPostList', () => {
     const post = makePost('Accueil', 2)
     await el.refresh(repoWith([post]))
 
-    const events = []
-    el.addEventListener('post-edit-name-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="edit-post-name"]').click()
+    const events: { postId: string, name: string }[] = []
+    el.addEventListener('post-edit-name-requested', (e: Event) => events.push((e as CustomEvent<{ postId: string, name: string }>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="edit-post-name"]')?.click()
 
     expect(events[0].postId).toBe(post.id)
     expect(events[0].name).toBe('Accueil')
@@ -78,13 +97,13 @@ describe('CrewPostList', () => {
   it('renders a delete button per slot', async () => {
     const slots = [makeSlot('saturday', '09:00', '12:00')]
     await el.refresh(repoWith([makePost('Accueil', 2, slots)]))
-    expect(el.querySelector('button[data-action="delete-slot"]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="delete-slot"]')).not.toBeNull()
   })
 
   it('renders an edit button per slot', async () => {
     const slots = [makeSlot('saturday', '09:00', '12:00')]
     await el.refresh(repoWith([makePost('Accueil', 2, slots)]))
-    expect(el.querySelector('button[data-action="edit-slot"]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="edit-slot"]')).not.toBeNull()
   })
 
   it('dispatches slot-delete-requested with postId and slotId on delete click', async () => {
@@ -92,9 +111,9 @@ describe('CrewPostList', () => {
     const post = makePost('Accueil', 2, [slot])
     await el.refresh(repoWith([post]))
 
-    const events = []
-    el.addEventListener('slot-delete-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="delete-slot"]').click()
+    const events: { postId: string, slotId: string }[] = []
+    el.addEventListener('slot-delete-requested', (e: Event) => events.push((e as CustomEvent<{ postId: string, slotId: string }>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="delete-slot"]')?.click()
 
     expect(events[0].postId).toBe(post.id)
     expect(events[0].slotId).toBe(slot.id)
@@ -105,9 +124,9 @@ describe('CrewPostList', () => {
     const post = makePost('Accueil', 2, [slot])
     await el.refresh(repoWith([post]))
 
-    const events = []
-    el.addEventListener('slot-edit-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="edit-slot"]').click()
+    const events: { postId: string, slot: SlotJSON }[] = []
+    el.addEventListener('slot-edit-requested', (e: Event) => events.push((e as CustomEvent<{ postId: string, slot: SlotJSON }>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="edit-slot"]')?.click()
 
     expect(events[0].postId).toBe(post.id)
     expect(events[0].slot.id).toBe(slot.id)
