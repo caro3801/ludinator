@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { EventStore } from './EventStore'
 
 describe('EventStore', () => {
-  let store
+  let store: EventStore
 
   beforeEach(() => {
     store = new EventStore(':memory:')
@@ -15,7 +15,7 @@ describe('EventStore', () => {
     const events = await store.replayModule('mioum')
     expect(events).toHaveLength(2)
     expect(events[0].type).toBe('ProductCreated')
-    expect(events[0].payload.name).toBe('Bière')
+    expect((events[0].payload as { name: string }).name).toBe('Bière')
   })
 
   it('returns events ordered by occurredAt', async () => {
@@ -47,7 +47,7 @@ describe('EventStore - replayModuleSinceLastReset', () => {
   it('returns all events when no reset exists', async () => {
     await store.append({ id: '1', module: 'crew', type: 'VolunteerCreated', aggregateId: null, payload: {}, occurredAt: '2024-01-01T00:00:00.000Z' })
     await store.append({ id: '2', module: 'crew', type: 'PostCreated', aggregateId: null, payload: {}, occurredAt: '2024-01-02T00:00:00.000Z' })
-    
+
     const events = await (store as any).replayModuleSinceLastReset('crew')
     expect(events).toHaveLength(2)
   })
@@ -56,7 +56,7 @@ describe('EventStore - replayModuleSinceLastReset', () => {
     await store.append({ id: '1', module: 'crew', type: 'VolunteerCreated', aggregateId: null, payload: {}, occurredAt: '2024-01-01T00:00:00.000Z' })
     await store.append({ id: '2', module: 'admin', type: 'ModuleResetInitiated', aggregateId: null, payload: { module: 'crew' }, occurredAt: '2024-01-02T00:00:00.000Z' })
     await store.append({ id: '3', module: 'crew', type: 'PostCreated', aggregateId: null, payload: {}, occurredAt: '2024-01-03T00:00:00.000Z' })
-    
+
     const events = await (store as any).replayModuleSinceLastReset('crew')
     expect(events).toHaveLength(1)
     expect(events[0].id).toBe('3')
@@ -65,7 +65,7 @@ describe('EventStore - replayModuleSinceLastReset', () => {
   it('returns empty array when reset is last event', async () => {
     await store.append({ id: '1', module: 'crew', type: 'VolunteerCreated', aggregateId: null, payload: {}, occurredAt: '2024-01-01T00:00:00.000Z' })
     await store.append({ id: '2', module: 'admin', type: 'ModuleResetInitiated', aggregateId: null, payload: { module: 'crew' }, occurredAt: '2024-01-02T00:00:00.000Z' })
-    
+
     const events = await (store as any).replayModuleSinceLastReset('crew')
     expect(events).toHaveLength(0)
   })
@@ -74,7 +74,7 @@ describe('EventStore - replayModuleSinceLastReset', () => {
     await store.append({ id: '1', module: 'crew', type: 'VolunteerCreated', aggregateId: null, payload: {}, occurredAt: '2024-01-01T00:00:00.000Z' })
     await store.append({ id: '2', module: 'admin', type: 'ModuleResetInitiated', aggregateId: null, payload: { module: 'fest' }, occurredAt: '2024-01-02T00:00:00.000Z' })
     await store.append({ id: '3', module: 'crew', type: 'PostCreated', aggregateId: null, payload: {}, occurredAt: '2024-01-03T00:00:00.000Z' })
-    
+
     const events = await (store as any).replayModuleSinceLastReset('crew')
     expect(events).toHaveLength(2)
   })

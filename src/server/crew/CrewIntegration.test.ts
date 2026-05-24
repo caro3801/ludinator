@@ -1,29 +1,34 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { EventStore } from '../EventStore'
 import { CommandDispatcher } from '../CommandDispatcher'
+import { ServerWebSocket, Server } from 'bun'
 
 describe('Crew integration', () => {
-  let store, dispatcher, server, ws1, ws2
+  let store: EventStore
+  let dispatcher: CommandDispatcher
+  let server: Server<unknown>
+  let ws1: WebSocket
+  let ws2: WebSocket
 
   beforeAll(async () => {
     store = new EventStore(':memory:')
     dispatcher = new CommandDispatcher(store)
-    const clients = new Set()
+    const clients = new Set<ServerWebSocket<unknown>>()
 
-    server = Bun.serve({
+    server = Bun.serve<unknown>({
       port: 0,
-      fetch(req, srv) { if (srv.upgrade(req)) return },
+      fetch(req: globalThis.Request, server: any) { if (server.upgrade(req)) return },
       websocket: {
-        async open(ws) {
+        async open(ws: ServerWebSocket<unknown>) {
           clients.add(ws)
           const snapshots = dispatcher.snapshots()
           for (const { module, data } of snapshots)
             ws.send(JSON.stringify({ type: 'state', module, data }))
         },
-        async message(ws, raw) {
+        async message(ws: ServerWebSocket<unknown>, raw: string) {
           await dispatcher.handle(ws, JSON.parse(raw), clients)
         },
-        close(ws) { clients.delete(ws) },
+        close(ws: ServerWebSocket<unknown>) { clients.delete(ws) },
       },
     })
 
@@ -44,9 +49,9 @@ describe('Crew integration', () => {
 
   it('sends initial crew snapshot on connection', async () => {
     const ws3 = new WebSocket(`ws://localhost:${server.port}`)
-    const snapshot = await new Promise(resolve => {
+    const snapshot = await new Promise<{ volunteers: unknown[], posts: unknown[], schedule: unknown }>(resolve => {
       ws3.onmessage = ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'crew') resolve(msg.data)
       }
     })
@@ -57,15 +62,15 @@ describe('Crew integration', () => {
   })
 
   it('creates a volunteer and broadcasts to all clients', async () => {
-    const promise1 = new Promise(resolve => {
+    const promise1 = new Promise<{ volunteers: { name: string }[] }>(resolve => {
       ws1.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'crew' && msg.data.volunteers.length > 0) resolve(msg.data)
       })
     })
-    const promise2 = new Promise(resolve => {
+    const promise2 = new Promise<{ volunteers: { name: string }[] }>(resolve => {
       ws2.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'crew' && msg.data.volunteers.length > 0) resolve(msg.data)
       })
     })
@@ -78,34 +83,34 @@ describe('Crew integration', () => {
   })
 
   it('full flow: create post, add slot, assign volunteer', async () => {
-    const postStatePromise = new Promise(resolve => {
+    const postStatePromise = new Promise<{ posts: { id: string }[] }>(resolve => {
       ws1.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'crew' && msg.data.posts.length > 0) resolve(msg.data)
       })
     })
     ws1.send(JSON.stringify({ id: 'cmd-2', module: 'crew', action: 'CreatePost', payload: { name: 'Bar', minVolunteers: 1 } }))
     await postStatePromise
 
-    const state1 = dispatcher.snapshots().find(s => s.module === 'crew').data
+    const state1 = dispatcher.snapshots().find(s => s.module === 'crew')!.data as { posts: { id: string }[] }
     const postId = state1.posts[0].id
 
-    const slotStatePromise = new Promise(resolve => {
+    const slotStatePromise = new Promise<{ posts: { slots: { id: string }[] }[] }>(resolve => {
       ws1.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'crew' && msg.data.posts[0]?.slots?.length > 0) resolve(msg.data)
       })
     })
     ws1.send(JSON.stringify({ id: 'cmd-3', module: 'crew', action: 'AddSlotToPost', payload: { postId, day: 'samedi', startTime: '10:00', endTime: '14:00' } }))
     await slotStatePromise
 
-    const state2 = dispatcher.snapshots().find(s => s.module === 'crew').data
+    const state2 = dispatcher.snapshots().find(s => s.module === 'crew')!.data as { posts: { slots: { id: string }[] }[], volunteers: { id: string }[] }
     const slotId = state2.posts[0].slots[0].id
     const volunteerId = state2.volunteers[0].id
 
-    const assignStatePromise = new Promise(resolve => {
+    const assignStatePromise = new Promise<{ schedule: { assignments: { volunteerId: string, slotId: string }[] } }>(resolve => {
       ws1.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'crew' && msg.data.schedule?.assignments?.length > 0) resolve(msg.data)
       })
     })
@@ -117,9 +122,9 @@ describe('Crew integration', () => {
   })
 
   it('validation error returns ok:false ack', async () => {
-    const ackPromise = new Promise(resolve => {
+    const ackPromise = new Promise<{ ok: boolean, error?: string }>(resolve => {
       ws1.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.id === 'cmd-err') resolve(msg)
       })
     })
