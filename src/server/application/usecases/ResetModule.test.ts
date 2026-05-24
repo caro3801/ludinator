@@ -72,9 +72,11 @@ describe('ResetModule', () => {
     
     await usecase.execute('crew', 'correct')
     
-    // Only crew events should be cleared, fest should remain
-    expect(mockEventStore.events.length).toBe(1)
-    expect(mockEventStore.events[0].module).toBe('fest')
+    // Crew events should be cleared, fest should remain, plus the admin reset event
+    expect(mockEventStore.events.length).toBe(2)
+    expect(mockEventStore.events.some(e => e.module === 'fest')).toBe(true)
+    expect(mockEventStore.events.some(e => e.module === 'admin')).toBe(true)
+    expect(mockEventStore.events.some(e => e.module === 'crew')).toBe(false)
     expect(mockEventStore.clearedModules).toContain('crew')
   })
 })
