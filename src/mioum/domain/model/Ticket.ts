@@ -19,6 +19,7 @@ export interface TicketData {
   status: 'open' | 'closed' | 'cancelled'
   paymentMethod: PaymentMethodValue | null
   closedAt: number | null
+  total: number
 }
 
 class TicketLine {
@@ -153,6 +154,7 @@ export class Ticket {
       status: this.#status,
       paymentMethod: this.#paymentMethod,
       closedAt: this.#closedAt,
+      total: this.total,
     }
   }
 
