@@ -1,78 +1,125 @@
+interface SubCounterBatch {
+  id: string
+  timestamp: number
+  adults: number
+  children: number
+  families: number
+}
+
+interface SubCounterData {
+  id: string
+  label: string
+  total: number
+  totalAdults: number
+  totalChildren: number
+  batches: SubCounterBatch[]
+}
+
+interface EntryLogLike {
+  totalAdults: number
+  totalChildren: number
+  totalFamilies: number
+  total: number
+  subCounters: SubCounterData[]
+}
+
+interface AddSubCounterUseCase {
+  execute(params: { editionId: string; label: string }): Promise<unknown>
+}
+interface RemoveSubCounterUseCase {
+  execute(params: { editionId: string; subCounterId: string }): Promise<unknown>
+}
+interface RecordSubCounterEntriesUseCase {
+  execute(params: { editionId: string; subCounterId: string; adults: number; children: number; families: number }): Promise<unknown>
+}
+interface UpdateSubCounterBatchUseCase {
+  execute(params: { editionId: string; subCounterId: string; batchId: string; adults: number; children: number; families: number }): Promise<unknown>
+}
+interface DeleteSubCounterBatchUseCase {
+  execute(params: { editionId: string; subCounterId: string; batchId: string }): Promise<unknown>
+}
+
 export class FestEntryCounter extends HTMLElement {
-  #addScUseCase = null
-  #removeScUseCase = null
-  #recordScUseCase = null
-  #updateScUseCase = null
-  #deleteScUseCase = null
-  #editionId = null
+  #addScUseCase: AddSubCounterUseCase | null = null
+  #removeScUseCase: RemoveSubCounterUseCase | null = null
+  #recordScUseCase: RecordSubCounterEntriesUseCase | null = null
+  #updateScUseCase: UpdateSubCounterBatchUseCase | null = null
+  #deleteScUseCase: DeleteSubCounterBatchUseCase | null = null
+  #editionId: string | null = null
 
-  set addSubCounterUseCase(uc) { this.#addScUseCase = uc }
-  set removeSubCounterUseCase(uc) { this.#removeScUseCase = uc }
-  set recordSubCounterEntriesUseCase(uc) { this.#recordScUseCase = uc }
-  set updateSubCounterBatchUseCase(uc) { this.#updateScUseCase = uc }
-  set deleteSubCounterBatchUseCase(uc) { this.#deleteScUseCase = uc }
-  set editionId(id) { this.#editionId = id }
+  set addSubCounterUseCase(uc: AddSubCounterUseCase) { this.#addScUseCase = uc }
+  set removeSubCounterUseCase(uc: RemoveSubCounterUseCase) { this.#removeScUseCase = uc }
+  set recordSubCounterEntriesUseCase(uc: RecordSubCounterEntriesUseCase) { this.#recordScUseCase = uc }
+  set updateSubCounterBatchUseCase(uc: UpdateSubCounterBatchUseCase) { this.#updateScUseCase = uc }
+  set deleteSubCounterBatchUseCase(uc: DeleteSubCounterBatchUseCase) { this.#deleteScUseCase = uc }
+  set editionId(id: string) { this.#editionId = id }
 
-  connectedCallback() {
-    this.addEventListener('click', e => {
-      const delSc = e.target.closest('button[data-action="delete-sc-batch"]')
+  connectedCallback(): void {
+    this.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLElement | null
+      const delSc = target?.closest('button[data-action="delete-sc-batch"]')
       if (delSc) {
-        this.#deleteScUseCase.execute({
-          editionId: this.#editionId, subCounterId: delSc.dataset.scId, batchId: delSc.dataset.batchId,
-        })
+        const { batchId, scId } = (delSc as HTMLElement).dataset
+        if (!this.#deleteScUseCase || !this.#editionId || !scId || !batchId) return
+        this.#deleteScUseCase.execute({ editionId: this.#editionId, subCounterId: scId, batchId })
           .then(() => this.#updated())
-          .catch(err => this.#error(err))
+          .catch((err: unknown) => this.#error(err instanceof Error ? err : new Error(String(err))))
         return
       }
 
-      const removeSc = e.target.closest('button[data-action="remove-sub-counter"]')
+      const removeSc = target?.closest('button[data-action="remove-sub-counter"]')
       if (removeSc) {
-        this.#removeScUseCase.execute({ editionId: this.#editionId, subCounterId: removeSc.dataset.scId })
+        const { scId } = (removeSc as HTMLElement).dataset
+        if (!this.#removeScUseCase || !this.#editionId || !scId) return
+        this.#removeScUseCase.execute({ editionId: this.#editionId, subCounterId: scId })
           .then(() => this.#updated())
-          .catch(err => this.#error(err))
+          .catch((err: unknown) => this.#error(err instanceof Error ? err : new Error(String(err))))
         return
       }
 
-      const addSc = e.target.closest('button[data-action="add-sub-counter"]')
+      const addSc = target?.closest('button[data-action="add-sub-counter"]')
       if (addSc) {
-        const label = prompt('Nom du sous-compteur :')
+        const label: string | null = prompt('Nom du sous-compteur :')
         if (!label?.trim()) return
+        if (!this.#addScUseCase || !this.#editionId) return
         this.#addScUseCase.execute({ editionId: this.#editionId, label: label.trim() })
           .then(() => this.#updated())
-          .catch(err => this.#error(err))
+          .catch((err: unknown) => this.#error(err instanceof Error ? err : new Error(String(err))))
       }
     })
 
-    this.addEventListener('submit', e => {
-      const form = e.target.closest('form')
+    this.addEventListener('submit', (e: Event) => {
+      const form: HTMLFormElement | null = e.target as HTMLFormElement | null
       if (!form) return
       e.preventDefault()
-      const adults = parseInt(form.querySelector('[name="adults"]').value, 10) || 0
-      const children = parseInt(form.querySelector('[name="children"]').value, 10) || 0
-      const families = parseInt(form.querySelector('[name="families"]').value, 10) || 0
-      const batchId = form.dataset.batchId
-      const scId = form.closest('[data-sc-id]')?.dataset?.scId ?? null
+      const adults: number = parseInt(form.querySelector<HTMLInputElement>('[name="adults"]')?.value ?? '0', 10) || 0
+      const children: number = parseInt(form.querySelector<HTMLInputElement>('[name="children"]')?.value ?? '0', 10) || 0
+      const families: number = parseInt(form.querySelector<HTMLInputElement>('[name="families"]')?.value ?? '0', 10) || 0
+      const batchId: string | undefined = form.dataset.batchId
+      const scId: string | undefined = form.closest<HTMLElement>('[data-sc-id]')?.dataset?.scId
 
-      if (!scId) return
+      if (!scId || !this.#editionId) return
 
       if (batchId) {
+        if (!this.#updateScUseCase) return
         this.#updateScUseCase.execute({ editionId: this.#editionId, subCounterId: scId, batchId, adults, children, families })
           .then(() => this.#updated())
-          .catch(err => this.#error(err))
+          .catch((err: unknown) => this.#error(err instanceof Error ? err : new Error(String(err))))
       } else {
+        if (!this.#recordScUseCase) return
         this.#recordScUseCase.execute({ editionId: this.#editionId, subCounterId: scId, adults, children, families })
           .then(() => { form.reset(); this.#updated() })
-          .catch(err => this.#error(err))
+          .catch((err: unknown) => this.#error(err instanceof Error ? err : new Error(String(err))))
       }
     })
   }
 
-  refresh(log) {
-    const totalAdults = log?.totalAdults ?? 0
-    const totalChildren = log?.totalChildren ?? 0
-    const totalFamilies = log?.totalFamilies ?? 0
-    const total = log?.total ?? 0
-    const subCounters = log?.subCounters ?? []
+  refresh(log: EntryLogLike | null): void {
+    const totalAdults: number = log?.totalAdults ?? 0
+    const totalChildren: number = log?.totalChildren ?? 0
+    const totalFamilies: number = log?.totalFamilies ?? 0
+    const total: number = log?.total ?? 0
+    const subCounters: SubCounterData[] = log?.subCounters ?? []
 
     this.innerHTML = `
       <div class="mb-3 p-3 bg-light rounded d-flex gap-4 text-center">
@@ -93,7 +140,7 @@ export class FestEntryCounter extends HTMLElement {
     `
   }
 
-  #renderSubCounter(sc) {
+  #renderSubCounter(sc: SubCounterData): string {
     return `
       <div class="border rounded p-2 mb-2" data-sc-id="${sc.id}">
         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -127,7 +174,7 @@ export class FestEntryCounter extends HTMLElement {
     `
   }
 
-  #renderBatchList(batches, scId) {
+  #renderBatchList(batches: SubCounterBatch[], scId: string): string {
     if (!batches.length) return '<p class="text-muted small">Aucune entrée enregistrée.</p>'
     return `
       <div class="d-flex flex-column gap-2 mb-2">
@@ -146,16 +193,16 @@ export class FestEntryCounter extends HTMLElement {
     `
   }
 
-  #fmtTime(ts) {
-    const d = new Date(ts)
+  #fmtTime(ts: number): string {
+    const d: Date = new Date(ts)
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
 
-  #updated() {
+  #updated(): void {
     this.dispatchEvent(new CustomEvent('entries-updated', { bubbles: true }))
   }
 
-  #error(err) {
+  #error(err: Error): void {
     this.dispatchEvent(new CustomEvent('fest-error', { detail: { message: err.message }, bubbles: true }))
   }
 }

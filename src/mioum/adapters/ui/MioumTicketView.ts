@@ -1,9 +1,37 @@
+interface TicketLine {
+  id: string
+  productId: string
+  productName: string
+  unitPrice: number
+  quantity: number
+  subtotal: number
+}
+
+interface TicketLike {
+  id: string
+  status: string
+  isOpen: boolean
+  lines: TicketLine[]
+  total: number
+}
+
+interface ProductLike {
+  id: string
+  name: { value: string }
+  price: { value: number }
+  category: string
+}
+
+interface ProductRepo {
+  findAll(): Promise<ProductLike[]>
+}
+
 export class MioumTicketView extends HTMLElement {
-  connectedCallback() {
-    this.addEventListener('click', e => {
-      const btn = e.target.closest('button[data-action]')
+  connectedCallback(): void {
+    this.addEventListener('click', (e: Event) => {
+      const btn = (e.target as HTMLElement | null)?.closest('button[data-action]')
       if (!btn) return
-      const { action, ticketId, lineId, productId } = btn.dataset
+      const { action, ticketId, lineId, productId } = (btn as HTMLElement).dataset
       if (!ticketId) return
       if (action === 'remove-line') {
         this.dispatchEvent(new CustomEvent('line-remove-requested', {
@@ -50,7 +78,7 @@ export class MioumTicketView extends HTMLElement {
     })
   }
 
-  async refresh(ticket, productRepo) {
+  async refresh(ticket: TicketLike | null, productRepo: ProductRepo): Promise<void> {
     if (!ticket) {
       this.innerHTML = '<p class="text-muted">Aucun ticket ouvert.</p>'
       return
@@ -63,7 +91,7 @@ export class MioumTicketView extends HTMLElement {
       const sorted = [...products].sort((a, b) =>
         a.category.localeCompare(b.category, 'fr') || a.name.value.localeCompare(b.name.value, 'fr')
       )
-      const byCategory = sorted.reduce((acc, p) => {
+      const byCategory = sorted.reduce((acc: Record<string, ProductLike[]>, p: ProductLike) => {
         if (!acc[p.category]) acc[p.category] = []
         acc[p.category].push(p)
         return acc
@@ -72,7 +100,7 @@ export class MioumTicketView extends HTMLElement {
         ? '<p class="text-muted">Aucun produit dans le catalogue.</p>'
         : Object.entries(byCategory).map(([cat, prods]) => `
             <div class="col-12"><p class="text-muted small fw-semibold mb-1 mt-2 text-uppercase">${cat}</p></div>
-            ${prods.map(p => `
+            ${(prods as ProductLike[]).map(p => `
               <div class="col-6 col-md-4">
                 <button class="btn btn-outline-primary w-100 py-3"
                   data-action="add-product"

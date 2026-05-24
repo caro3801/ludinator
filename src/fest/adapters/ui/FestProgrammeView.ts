@@ -1,23 +1,49 @@
+interface SlotData {
+  day: string
+  startTime: string
+  endTime: string
+  activityName: string
+  location: string | null
+  registrationCount: number
+  maxParticipants: number | null
+  isOverCapacity: boolean
+}
+
+interface ActivityForProgramme {
+  name: { value: string }
+  location: string | null
+  slots: {
+    window: { day: string; startTime: string; endTime: string }
+    registrationCount: number
+    maxParticipants: number | null
+    isOverCapacity: boolean
+  }[]
+}
+
+interface ProgrammeRepo {
+  findAll(): Promise<ActivityForProgramme[]>
+}
+
 export class FestProgrammeView extends HTMLElement {
-  #hidePast = false
-  #slots = []   // { day, startTime, endTime, activityName, location, registrationCount, maxParticipants, isOverCapacity }
-  #nowFn = () => {
-    const d = new Date()
+  #hidePast: boolean = false
+  #slots: SlotData[] = []
+  #nowFn: () => string = (): string => {
+    const d: Date = new Date()
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
 
-  connectedCallback() {
-    this.addEventListener('click', e => {
-      if (e.target.closest('button[data-action="toggle-past"]')) {
+  connectedCallback(): void {
+    this.addEventListener('click', (e: Event) => {
+      if ((e.target as HTMLElement | null)?.closest('button[data-action="toggle-past"]')) {
         this.#hidePast = !this.#hidePast
         this.#updateContent()
       }
     })
   }
 
-  async refresh(repo, { nowFn } = {}) {
+  async refresh(repo: ProgrammeRepo, { nowFn }: { nowFn?: () => string } = {}): Promise<void> {
     if (nowFn) this.#nowFn = nowFn
-    const activities = await repo.findAll()
+    const activities: ActivityForProgramme[] = await repo.findAll()
 
     this.#slots = []
     for (const activity of activities) {
@@ -38,13 +64,13 @@ export class FestProgrammeView extends HTMLElement {
     this.#render()
   }
 
-  #visibleSlots() {
+  #visibleSlots(): SlotData[] {
     if (!this.#hidePast) return this.#slots
-    const now = this.#nowFn()
+    const now: string = this.#nowFn()
     return this.#slots.filter(s => s.endTime > now)
   }
 
-  #render() {
+  #render(): void {
     this.innerHTML = `
       <div class="mb-3">
         <button class="btn btn-sm btn-outline-secondary ${this.#hidePast ? 'active' : ''}"
@@ -54,23 +80,24 @@ export class FestProgrammeView extends HTMLElement {
     `
   }
 
-  #updateContent() {
-    this.querySelector('button[data-action="toggle-past"]')
-      .classList.toggle('active', this.#hidePast)
-    this.querySelector('.programme-content').innerHTML = this.#renderContent()
+  #updateContent(): void {
+    const btn: HTMLElement | null = this.querySelector('button[data-action="toggle-past"]')
+    btn?.classList.toggle('active', this.#hidePast)
+    const content: HTMLElement | null = this.querySelector('.programme-content')
+    if (content) content.innerHTML = this.#renderContent()
   }
 
-  #renderContent() {
-    const slots = this.#visibleSlots()
+  #renderContent(): string {
+    const slots: SlotData[] = this.#visibleSlots()
     if (!slots.length) return '<p class="text-muted">Aucune activité à afficher.</p>'
 
-    const byDay = {}
+    const byDay: Record<string, SlotData[]> = {}
     for (const s of slots) {
       byDay[s.day] ??= []
       byDay[s.day].push(s)
     }
     for (const day of Object.keys(byDay)) {
-      byDay[day].sort((a, b) => a.startTime.localeCompare(b.startTime))
+      byDay[day].sort((a: SlotData, b: SlotData) => a.startTime.localeCompare(b.startTime))
     }
 
     return Object.entries(byDay).sort(([a], [b]) => a.localeCompare(b)).map(([day, daySlots]) => `

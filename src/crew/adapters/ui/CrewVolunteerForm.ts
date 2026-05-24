@@ -26,7 +26,7 @@ export class CrewVolunteerForm extends HTMLElement {
     try {
       const volunteerCreated = await this.#useCase.execute({ name })
       this.dispatchEvent(new CustomEvent('volunteer-created', { detail: volunteerCreated, bubbles: true }))
-      e.target.reset()
+      ;(e.target as HTMLFormElement).reset()
     } catch (err) {
       if (err instanceof Error) {
         this.dispatchEvent(new CustomEvent('crew-error', { detail: { message: err.message }, bubbles: true }))

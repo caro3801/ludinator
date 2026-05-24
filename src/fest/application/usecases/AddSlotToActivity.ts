@@ -4,7 +4,7 @@ import { SlotAddedToActivity } from '../../domain/events'
 import { ActivityId, FestSlotId } from '../../../shared/types'
 
 interface AddSlotToActivityParams {
-  activity: { id: ActivityId, name: string, location: string | null, slots: { id: FestSlotId, activityId: ActivityId, window: { day: string, startTime: string, endTime: string }, min: number | null, max: number | null, registrations: { id: string, personName: string }[] }[] }
+  activity: { id: ActivityId, name: string, location: string | null, slots: unknown[] }
   day: string
   startTime: string
   endTime: string

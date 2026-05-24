@@ -13,6 +13,6 @@ export class UpdateProduct {
   execute({ product: productData, name, price, category }: UpdateProductParams): ProductUpdated {
     const product = Product.fromJSON(productData)
     product.update({ name, price, category })
-    return new ProductUpdated({ product })
+    return new ProductUpdated({ product: product.toJSON() })
   }
 }

@@ -1,10 +1,9 @@
 import { Activity } from './domain/model/Activity'
-import { EntryLog } from './domain/model/EntryLog'
+import { EntryLog, EntryLogData } from './domain/model/EntryLog'
 import { CreateActivity } from './application/usecases/CreateActivity'
 import { UpdateActivityName } from './application/usecases/UpdateActivityName'
 import { AddSlotToActivity } from './application/usecases/AddSlotToActivity'
 import { RegisterToActivity } from './application/usecases/RegisterToActivity'
-import { ActivityJSON } from './domain/model/Activity'
 import { WsClient } from '../client/WsClient'
 import './adapters/ui/FestActivityForm'
 import './adapters/ui/FestActivityList'
@@ -13,6 +12,8 @@ import './adapters/ui/FestEntryForm'
 import './adapters/ui/FestEntryCounter'
 import './adapters/ui/FestAttendanceChart'
 import './adapters/ui/FestProgrammeView'
+
+type ActivityJSON = { id: string; name: string; location: string | null; slots: { id: string; registrations: unknown[] }[] }
 
 const EDITION_ID = 'edition-2024'
 const wsPort = 3000
@@ -55,7 +56,8 @@ if (entryForm) {
       if (!activity) throw new Error(`Activity not found: ${activityId}`)
       const event = new RegisterToActivity().execute({ activity: activity.toJSON(), slotId, personName })
       ws.send('fest', 'RegisterToActivity', { activityId, slotId, personName })
-      const slot = (event.payload as ActivityJSON).slots.find((s) => s.id === slotId)
+      const slots = (event.payload as ActivityJSON).slots
+      const slot = slots.find((s: { id: string; registrations: unknown[] }) => s.id === slotId)
       return slot?.registrations[slot.registrations.length - 1]
     },
   }
@@ -90,9 +92,10 @@ if (entryCounter) {
   }
 }
 
-ws.onState('fest', ({ activities, entryLog }: { activities: ActivityJSON[]; entryLog: unknown | null }) => {
-  const domainActivities = activities.map((a) => Activity.fromJSON(a))
-  const domainEntryLog = entryLog ? EntryLog.fromJSON(entryLog) : null
+ws.onState('fest', (data: unknown) => {
+  const { activities, entryLog } = data as { activities: ActivityJSON[]; entryLog: EntryLogData | null }
+  const domainActivities: Activity[] = activities.map((a: ActivityJSON) => Activity.fromJSON(a))
+  const domainEntryLog: EntryLog | null = entryLog ? EntryLog.fromJSON(entryLog) : null
   currentActivities = domainActivities
 
   if (activityList) {
@@ -119,7 +122,7 @@ ws.onConnectionChange(({ connected, queueLength }: { connected: boolean; queueLe
   }
 })
 
-const showError = (msg: string): void => document.dispatchEvent(new CustomEvent('fest-error', { detail: { message: msg } }))
+const showError = (msg: string): void => { document.dispatchEvent(new CustomEvent('fest-error', { detail: { message: msg } })) }
 
 document.addEventListener('activity-rename-requested', (e) => {
   const event = e as CustomEvent<{ activityId: string; name: string }>

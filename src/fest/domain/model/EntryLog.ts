@@ -16,7 +16,7 @@ interface SubCounterData {
   batches: EntryBatchData[]
 }
 
-interface EntryLogData {
+export interface EntryLogData {
   id: EntryId
   editionId: string
   subCounters: SubCounterData[]

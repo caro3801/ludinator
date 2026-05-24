@@ -1,22 +1,33 @@
 import Chart from 'chart.js/auto'
 import { bucketBatches } from './bucketBatches'
 
+interface EntryBatch {
+  timestamp: number
+  adults: number
+  children: number
+  families: number
+}
+
+interface LogLike {
+  allBatches: EntryBatch[]
+}
+
 export class FestAttendanceChart extends HTMLElement {
-  #chart = null
-  #log = null
+  #chart: Chart | null = null
+  #log: LogLike | null = null
   #interval = 30
 
-  connectedCallback() {
+  connectedCallback(): void {
     this.#renderShell()
   }
 
-  refresh(log) {
+  refresh(log: LogLike): void {
     this.#log = log
     if (!this.querySelector('canvas')) this.#renderShell()
     this.#updateChart()
   }
 
-  #renderShell() {
+  #renderShell(): void {
     this.innerHTML = `
       <div class="d-flex align-items-center gap-3 mb-3">
         <label class="form-label mb-0 small">Intervalle (min)</label>
@@ -28,19 +39,21 @@ export class FestAttendanceChart extends HTMLElement {
         <p class="empty-notice text-muted text-center" hidden>Aucune donnée à afficher.</p>
       </div>
     `
-    this.querySelector('input[name="interval"]').addEventListener('change', e => {
-      const val = parseInt(e.target.value, 10)
+    this.querySelector('input[name="interval"]')?.addEventListener('change', (e: Event) => {
+      const val = parseInt((e.target as HTMLInputElement).value, 10)
       if (val > 0) { this.#interval = val; this.#updateChart() }
     })
   }
 
-  #updateChart() {
+  #updateChart(): void {
     const batches = this.#log?.allBatches ?? []
     const buckets = bucketBatches(batches, this.#interval)
     const empty = !buckets.length
 
-    this.querySelector('.empty-notice').hidden = !empty
-    this.querySelector('canvas').hidden = empty
+    const emptyNotice = this.querySelector<HTMLElement>('.empty-notice')
+    const canvas = this.querySelector<HTMLCanvasElement>('canvas')
+    if (emptyNotice) emptyNotice.hidden = !empty
+    if (canvas) canvas.hidden = empty
 
     if (empty) {
       this.#chart?.destroy()
@@ -48,6 +61,7 @@ export class FestAttendanceChart extends HTMLElement {
       return
     }
 
+    if (!canvas) return
     const labels = buckets.map(b => b.label)
 
     if (this.#chart) {
@@ -56,7 +70,7 @@ export class FestAttendanceChart extends HTMLElement {
       this.#chart.data.datasets[1].data = buckets.map(b => b.children)
       this.#chart.update()
     } else {
-      this.#chart = new Chart(this.querySelector('canvas'), {
+      this.#chart = new Chart(canvas, {
         type: 'bar',
         data: {
           labels,

@@ -25,7 +25,7 @@ export class Activity {
 
   updateName(raw: string): void { this.#name = new ActivityName(raw) }
 
-  addSlot(window: TimeWindow, { min = null, max = null } = {}): TimeSlot {
+  addSlot(window: TimeWindow, { min = null, max = null }: { min?: number | null, max?: number | null } = {}): TimeSlot {
     const slot = TimeSlot.create(this.#id, window, { min, max })
     this.#slots.push(slot)
     return slot

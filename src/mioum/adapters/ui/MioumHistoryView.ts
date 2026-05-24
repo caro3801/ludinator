@@ -1,9 +1,23 @@
+interface TicketLike {
+  id: string
+  status: string
+  isOpen: boolean
+  closedAt: number | null
+  paymentMethod: string | null
+  lines: { length: number }
+  total: number
+}
+
+interface TicketRepo {
+  findAll(): Promise<TicketLike[]>
+}
+
 export class MioumHistoryView extends HTMLElement {
-  connectedCallback() {
-    this.addEventListener('click', e => {
-      const btn = e.target.closest('button[data-action]')
+  connectedCallback(): void {
+    this.addEventListener('click', (e: Event) => {
+      const btn = (e.target as HTMLElement | null)?.closest('button[data-action]')
       if (!btn) return
-      const { action, ticketId } = btn.dataset
+      const { action, ticketId } = (btn as HTMLElement).dataset
       if (action === 'reopen-ticket') {
         this.dispatchEvent(new CustomEvent('ticket-reopen-requested', {
           detail: { ticketId },
@@ -13,7 +27,7 @@ export class MioumHistoryView extends HTMLElement {
     })
   }
 
-  async refresh(ticketRepo) {
+  async refresh(ticketRepo: TicketRepo): Promise<void> {
     const all = await ticketRepo.findAll()
     const past = all
       .filter(t => !t.isOpen)

@@ -1,5 +1,22 @@
+interface StatsBreakdown {
+  productName: string
+  quantity: number
+  revenue: number
+}
+
+interface SalesStats {
+  ticketCount: number
+  totalRevenue: number
+  averageTicket: number
+  breakdown: StatsBreakdown[]
+}
+
+interface StatsUseCase {
+  execute(): Promise<SalesStats>
+}
+
 export class MioumStatsView extends HTMLElement {
-  async refresh(statsUseCase) {
+  async refresh(statsUseCase: StatsUseCase): Promise<void> {
     const stats = await statsUseCase.execute()
 
     if (stats.ticketCount === 0) {

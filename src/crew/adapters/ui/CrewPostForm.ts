@@ -29,7 +29,7 @@ export class CrewPostForm extends HTMLElement {
     try {
       const postCreated = await this.#useCase.execute({ name, minVolunteers })
       this.dispatchEvent(new CustomEvent('post-created', { detail: postCreated, bubbles: true }))
-      e.target.reset()
+      ;(e.target as HTMLFormElement).reset()
       minInput.value = '1'
     } catch (err) {
       if (err instanceof Error) {

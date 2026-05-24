@@ -12,7 +12,7 @@ export class TimeSlot {
   #maxParticipants: number | null
   #registrations: Registration[]
 
-  constructor(id: FestSlotId, activityId: ActivityId, window: TimeWindow, { min = null, max = null } = {}) {
+  constructor(id: FestSlotId, activityId: ActivityId, window: TimeWindow, { min = null, max = null }: { min?: number | null, max?: number | null } = {}) {
     this.#id = id
     this.#activityId = activityId
     this.#window = window

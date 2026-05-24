@@ -47,7 +47,7 @@ interface Batch {
   adults: number
   children: number
   families: number
-  recordedAt: number
+  timestamp: number
 }
 
 interface SubCounter {

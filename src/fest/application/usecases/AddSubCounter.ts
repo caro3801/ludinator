@@ -3,7 +3,7 @@ import { SubCounterAdded } from '../../domain/events'
 import { EditionId, EntryId } from '../../../shared/types'
 
 interface AddSubCounterParams {
-  entryLog: { id: EntryId, editionId: EditionId, subCounters: { id: string, label: string, batches: { id: string, adults: number, children: number, families: number, recordedAt: number }[] }[] } | null
+  entryLog: { id: EntryId, editionId: EditionId, subCounters: { id: string, label: string, batches: { id: string, adults: number, children: number, families: number, timestamp: number }[] }[] } | null
   label: string
   editionId: EditionId
 }

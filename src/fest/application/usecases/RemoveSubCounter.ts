@@ -3,7 +3,7 @@ import { SubCounterRemoved } from '../../domain/events'
 import { EditionId, EntryId } from '../../../shared/types'
 
 interface RemoveSubCounterParams {
-  entryLog: { id: EntryId, editionId: EditionId, subCounters: { id: string, label: string, batches: { id: string, adults: number, children: number, families: number, recordedAt: number }[] }[] }
+  entryLog: { id: EntryId, editionId: EditionId, subCounters: { id: string, label: string, batches: { id: string, adults: number, children: number, families: number, timestamp: number }[] }[] }
   subCounterId: string
 }
 

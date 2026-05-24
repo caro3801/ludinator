@@ -1,12 +1,23 @@
+interface ProductLike {
+  id: string
+  name: { value: string }
+  price: { value: number }
+  category: string
+}
+
+interface ProductRepo {
+  findAll(): Promise<ProductLike[]>
+}
+
 export class MioumProductList extends HTMLElement {
-  connectedCallback() {
-    this.addEventListener('click', e => {
-      const btn = e.target.closest('button[data-action]')
+  connectedCallback(): void {
+    this.addEventListener('click', (e: Event) => {
+      const btn = (e.target as HTMLElement | null)?.closest('button[data-action]')
       if (!btn) return
-      const { action, productId, name, price, category } = btn.dataset
+      const { action, productId, name, price, category } = (btn as HTMLElement).dataset
       if (action === 'edit-product') {
         this.dispatchEvent(new CustomEvent('product-edit-requested', {
-          detail: { productId, name, price: parseFloat(price), category },
+          detail: { productId, name, price: parseFloat(price ?? '0'), category },
           bubbles: true,
         }))
       }
@@ -19,7 +30,7 @@ export class MioumProductList extends HTMLElement {
     })
   }
 
-  async refresh(repo) {
+  async refresh(repo: ProductRepo): Promise<void> {
     const products = await repo.findAll()
     if (products.length === 0) {
       this.innerHTML = '<p class="text-muted">Aucun produit enregistré.</p>'

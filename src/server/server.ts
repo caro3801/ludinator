@@ -1,10 +1,23 @@
 import { CommandDispatcher } from './CommandDispatcher'
 import { EventStore } from './EventStore'
 import { Database } from 'bun:sqlite'
+import { Server, ServerWebSocket } from 'bun'
 import { AdminCommandHandler } from './adapters/handlers/AdminCommandHandler'
 import { SqliteAdminRepository } from './adapters/storage/SqliteAdminRepository'
+import { EventId } from '../shared/types'
 
-// Créer une base de données partagée
+interface Command {
+  id: EventId
+  module: string
+  action: string
+  payload: unknown
+}
+
+interface AdminPayload {
+  password: string
+  module?: string
+}
+
 const db = new Database('ludinator.db')
 
 // Initialiser EventStore avec la base partagée
@@ -15,33 +28,33 @@ const eventStore = new EventStore()
 const adminDb = new Database('ludinator.db')
 
 const dispatcher = new CommandDispatcher(eventStore)
-const clients: Set<WebSocket> = new Set()
+const clients: Set<ServerWebSocket<unknown>> = new Set()
 
 // Initialiser le handler admin avec sa propre connexion
 const adminRepo = new SqliteAdminRepository(adminDb)
 const adminHandler = new AdminCommandHandler(adminRepo, eventStore)
 
-Bun.serve({
+const server = Bun.serve<unknown>({
   port: 3000,
   hostname: '0.0.0.0',
-  fetch(req: Request, server: Bun.Server): Response | null {
-    if (server.upgrade(req)) return null
+  fetch(req: Request, server: Server<unknown>): Response | undefined {
+    if (server.upgrade(req, { data: undefined })) return undefined
     return new Response('ludinator server', { status: 200 })
   },
   websocket: {
-    async open(ws: WebSocket): Promise<void> {
+    async open(ws: ServerWebSocket<unknown>): Promise<void> {
       clients.add(ws)
       const snapshots = await dispatcher.snapshots()
       for (const { module, data } of snapshots) {
         ws.send(JSON.stringify({ type: 'state', module, data }))
       }
     },
-    async message(ws: WebSocket, raw: string): Promise<void> {
-      const cmd: { id: string; module: string; action: string; payload: unknown } = JSON.parse(raw)
-      
-      // Gérer les commandes admin séparément
+    async message(ws: ServerWebSocket<unknown>, raw: string | Buffer<ArrayBufferLike>): Promise<void> {
+      const message = typeof raw === 'string' ? raw : new TextDecoder().decode(raw)
+      const cmd: Command = JSON.parse(message)
+
       if (cmd.module === 'admin') {
-        const payload = cmd.payload as Record<string, string>
+        const payload = cmd.payload as AdminPayload
         switch (cmd.action) {
           case 'CheckAdminSetup':
             const checkResp = await adminHandler.handleCheckAdminSetup()
@@ -57,11 +70,10 @@ Bun.serve({
             return
           case 'ResetModule':
             const resetResp = await adminHandler.handleResetModule(
-              payload.module,
+              payload.module as string,
               payload.password
             )
             ws.send(JSON.stringify({ id: cmd.id, ok: true, ...resetResp }))
-            // Après un reset, recharger les snapshots pour tous les clients
             const snapshots = await dispatcher.snapshots()
             for (const client of clients) {
               for (const { module, data } of snapshots) {
@@ -73,16 +85,17 @@ Bun.serve({
             ws.send(JSON.stringify({ id: cmd.id, ok: false, error: `Unknown admin action: ${cmd.action}` }))
             return
         }
-        return
       }
-      
+
       // Commandes normales
       await dispatcher.handle(ws, cmd, clients)
     },
-    close(ws: WebSocket): void {
+    close(ws: ServerWebSocket<unknown>, code: number, reason: string): void {
       clients.delete(ws)
     },
   },
 })
 
 console.log('ludinator server running on ws://0.0.0.0:3000')
+
+export { server }

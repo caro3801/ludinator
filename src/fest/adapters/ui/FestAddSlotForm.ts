@@ -1,17 +1,26 @@
+interface AddSlotUseCase {
+  execute(params: { activityId: string; day: string; startTime: string; endTime: string; min: number | null; max: number | null }): Promise<unknown>
+}
+
+interface ActivityOption {
+  id: string
+  name: { value: string }
+}
+
 export class FestAddSlotForm extends HTMLElement {
-  #useCase = null
-  #activities = []
+  #useCase: AddSlotUseCase | null = null
+  #activities: ActivityOption[] = []
 
-  set addSlotToActivityUseCase(uc) { this.#useCase = uc }
+  set addSlotToActivityUseCase(uc: AddSlotUseCase) { this.#useCase = uc }
 
-  set activities(list) {
+  set activities(list: ActivityOption[]) {
     this.#activities = list
     this.#render()
   }
 
-  connectedCallback() { this.#render() }
+  connectedCallback(): void { this.#render() }
 
-  #render() {
+  #render(): void {
     this.innerHTML = `
       <form>
         <div class="mb-2">
@@ -41,25 +50,27 @@ export class FestAddSlotForm extends HTMLElement {
         <button class="btn btn-primary btn-sm" type="submit">Ajouter le créneau</button>
       </form>
     `
-    this.querySelector('form').addEventListener('submit', e => this.#onSubmit(e))
+    const form = this.querySelector('form')
+    if (form) form.addEventListener('submit', (e: Event) => this.#onSubmit(e as SubmitEvent))
   }
 
-  async #onSubmit(e) {
+  async #onSubmit(e: SubmitEvent): Promise<void> {
     e.preventDefault()
-    const activityId = this.querySelector('[name="activityId"]').value
-    const day = this.querySelector('[name="day"]').value.trim()
-    const startTime = this.querySelector('[name="startTime"]').value
-    const endTime = this.querySelector('[name="endTime"]').value
-    const minRaw = this.querySelector('[name="min"]').value
-    const maxRaw = this.querySelector('[name="max"]').value
+    const activityId = (this.querySelector<HTMLSelectElement>('[name="activityId"]'))?.value ?? ''
+    const day = (this.querySelector<HTMLInputElement>('[name="day"]'))?.value.trim() ?? ''
+    const startTime = (this.querySelector<HTMLInputElement>('[name="startTime"]'))?.value ?? ''
+    const endTime = (this.querySelector<HTMLInputElement>('[name="endTime"]'))?.value ?? ''
+    const minRaw = (this.querySelector<HTMLInputElement>('[name="min"]'))?.value
+    const maxRaw = (this.querySelector<HTMLInputElement>('[name="max"]'))?.value
     const min = minRaw ? parseInt(minRaw, 10) : null
     const max = maxRaw ? parseInt(maxRaw, 10) : null
+    if (!this.#useCase) return
     try {
       const slot = await this.#useCase.execute({ activityId, day, startTime, endTime, min, max })
       this.dispatchEvent(new CustomEvent('slot-added-to-activity', { detail: slot, bubbles: true }))
-      this.querySelector('form').reset()
+      this.querySelector('form')?.reset()
     } catch (err) {
-      this.dispatchEvent(new CustomEvent('fest-error', { detail: { message: err.message }, bubbles: true }))
+      this.dispatchEvent(new CustomEvent('fest-error', { detail: { message: err instanceof Error ? err.message : String(err) }, bubbles: true }))
     }
   }
 }

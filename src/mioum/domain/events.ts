@@ -2,14 +2,21 @@ import { ProductId, TicketId } from '../../shared/types'
 import { Product } from './model/Product'
 import { Ticket } from './model/Ticket'
 
+interface ProductPayload {
+  id: ProductId
+  name: string
+  price: number
+  category: string
+}
+
 export class ProductCreated {
   readonly type = 'ProductCreated'
   readonly module = 'mioum'
   readonly aggregateId: ProductId
-  readonly payload: Product
+  readonly payload: ProductPayload
   readonly occurredAt: string
 
-  constructor({ product, occurredAt = new Date().toISOString() }: { product: Product; occurredAt?: string }) {
+  constructor({ product, occurredAt = new Date().toISOString() }: { product: ProductPayload; occurredAt?: string }) {
     this.aggregateId = product.id
     this.payload = product
     this.occurredAt = occurredAt
@@ -20,10 +27,10 @@ export class ProductUpdated {
   readonly type = 'ProductUpdated'
   readonly module = 'mioum'
   readonly aggregateId: ProductId
-  readonly payload: Product
+  readonly payload: ProductPayload
   readonly occurredAt: string
 
-  constructor({ product, occurredAt = new Date().toISOString() }: { product: Product; occurredAt?: string }) {
+  constructor({ product, occurredAt = new Date().toISOString() }: { product: ProductPayload; occurredAt?: string }) {
     this.aggregateId = product.id
     this.payload = product
     this.occurredAt = occurredAt

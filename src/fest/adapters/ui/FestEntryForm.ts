@@ -1,26 +1,41 @@
+interface Registration {
+  id: string
+  personName: string
+  waitlisted: boolean
+}
+
+interface RegisterEntryUseCase {
+  execute(params: { activityId: string; slotId: string; personName: string }): Promise<Registration>
+}
+
+interface CancelRegistrationUseCase {
+  execute(params: { activityId: string; slotId: string; registrationId: string }): Promise<unknown>
+}
+
 export class FestEntryForm extends HTMLElement {
-  #registerUseCase = null
-  #cancelUseCase = null
-  #activityId = null
-  #slotId = null
-  #registrations = []
+  #registerUseCase: RegisterEntryUseCase | null = null
+  #cancelUseCase: CancelRegistrationUseCase | null = null
+  #activityId: string | null = null
+  #slotId: string | null = null
+  #registrations: Registration[] = []
 
-  set registerEntryUseCase(uc) { this.#registerUseCase = uc }
-  set cancelRegistrationUseCase(uc) { this.#cancelUseCase = uc }
+  set registerEntryUseCase(uc: RegisterEntryUseCase) { this.#registerUseCase = uc }
+  set cancelRegistrationUseCase(uc: CancelRegistrationUseCase) { this.#cancelUseCase = uc }
 
-  connectedCallback() {
-    this.addEventListener('click', e => {
-      if (e.target.closest('button[data-action="cancel"]')) {
+  connectedCallback(): void {
+    this.addEventListener('click', (e: Event) => {
+      const target: HTMLElement | null = e.target as HTMLElement | null
+      if (target?.closest('button[data-action="cancel"]')) {
         this.hidden = true
         return
       }
-      const delBtn = e.target.closest('button[data-action="cancel-registration"]')
-      if (delBtn) this.#onDelete(delBtn.dataset.registrationId)
+      const delBtn = target?.closest('button[data-action="cancel-registration"]')
+      if (delBtn) this.#onDelete((delBtn as HTMLElement).dataset.registrationId ?? '')
     })
     this.#renderShell()
   }
 
-  open({ activityId, slotId, registrations }) {
+  open({ activityId, slotId, registrations }: { activityId: string; slotId: string; registrations: Registration[] }): void {
     this.#activityId = activityId
     this.#slotId = slotId
     this.#registrations = [...registrations]
@@ -28,7 +43,7 @@ export class FestEntryForm extends HTMLElement {
     this.hidden = false
   }
 
-  #renderShell() {
+  #renderShell(): void {
     this.innerHTML = `
       <div class="mb-3">
         ${this.#renderList()}
@@ -43,10 +58,11 @@ export class FestEntryForm extends HTMLElement {
         </div>
       </form>
     `
-    this.querySelector('form').addEventListener('submit', e => this.#onSubmit(e))
+    const form: HTMLFormElement | null = this.querySelector('form')
+    if (form) form.addEventListener('submit', (e: Event) => this.#onSubmit(e as SubmitEvent))
   }
 
-  #renderList() {
+  #renderList(): string {
     if (!this.#registrations.length) return '<p class="text-muted small mb-0">Aucune inscription.</p>'
     return `<ul class="list-group list-group-flush">
       ${this.#registrations.map(r => `
@@ -63,15 +79,17 @@ export class FestEntryForm extends HTMLElement {
     </ul>`
   }
 
-  #updateList() {
-    this.querySelector('div.mb-3').innerHTML = this.#renderList()
+  #updateList(): void {
+    const div: HTMLElement | null = this.querySelector('div.mb-3')
+    if (div) div.innerHTML = this.#renderList()
   }
 
-  async #onDelete(registrationId) {
+  async #onDelete(registrationId: string): Promise<void> {
     try {
+      if (!this.#cancelUseCase) return
       await this.#cancelUseCase.execute({
-        activityId: this.#activityId,
-        slotId: this.#slotId,
+        activityId: this.#activityId ?? '',
+        slotId: this.#slotId ?? '',
         registrationId,
       })
       this.#registrations = this.#registrations.filter(r => r.id !== registrationId)
@@ -81,29 +99,31 @@ export class FestEntryForm extends HTMLElement {
         bubbles: true,
       }))
     } catch (err) {
-      this.#error(err)
+      this.#error(err instanceof Error ? err : new Error(String(err)))
     }
   }
 
-  async #onSubmit(e) {
+  async #onSubmit(e: SubmitEvent): Promise<void> {
     e.preventDefault()
-    const personName = this.querySelector('[name="personName"]').value.trim()
+    const personName: string = this.querySelector<HTMLInputElement>('[name="personName"]')?.value.trim() ?? ''
     try {
-      const reg = await this.#registerUseCase.execute({
-        activityId: this.#activityId,
-        slotId: this.#slotId,
+      if (!this.#registerUseCase) return
+      const reg: Registration = await this.#registerUseCase.execute({
+        activityId: this.#activityId ?? '',
+        slotId: this.#slotId ?? '',
         personName,
       })
       this.#registrations.push(reg)
       this.#updateList()
-      this.querySelector('[name="personName"]').value = ''
+      const input: HTMLInputElement | null = this.querySelector('[name="personName"]')
+      if (input) input.value = ''
       this.dispatchEvent(new CustomEvent('entry-registered', { detail: reg, bubbles: true }))
     } catch (err) {
-      this.#error(err)
+      this.#error(err instanceof Error ? err : new Error(String(err)))
     }
   }
 
-  #error(err) {
+  #error(err: Error): void {
     this.dispatchEvent(new CustomEvent('fest-error', { detail: { message: err.message }, bubbles: true }))
   }
 }
