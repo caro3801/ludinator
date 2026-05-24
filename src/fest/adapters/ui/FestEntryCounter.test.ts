@@ -65,9 +65,9 @@ describe('FestEntryCounter', () => {
     form!.querySelector<HTMLInputElement>('[name="adults"]')!.value = '2'
     form!.querySelector<HTMLInputElement>('[name="children"]')!.value = '1'
     form!.querySelector<HTMLInputElement>('[name="families"]')!.value = '0'
-    form?.dispatchEvent(new Event('submit', { bubbles: true }))
+    form!.dispatchEvent(new Event('submit', { bubbles: true }))
     await vi.waitFor(() =>
-      expect(el.recordSubCounterEntriesUseCase.execute).toHaveBeenCalledWith({
+      expect(el.recordSubCounterEntriesUseCase!.execute).toHaveBeenCalledWith({
         editionId: 'edition-2024', subCounterId: sc.id, adults: 2, children: 1, families: 0,
       })
     )
@@ -76,27 +76,27 @@ describe('FestEntryCounter', () => {
   it('calls updateSubCounterBatchUseCase on sub-counter batch save', async () => {
     const row = el.querySelector<HTMLFormElement>(`[data-sc-id="${sc.id}"] form[data-batch-id="${scBatch.id}"]`)
     row!.querySelector<HTMLInputElement>('[name="adults"]')!.value = '7'
-    row?.querySelector<HTMLButtonElement>('button[type="submit"]')?.click()
+    row!.querySelector<HTMLButtonElement>('button[type="submit"]')!.click()
     await vi.waitFor(() =>
-      expect(el.updateSubCounterBatchUseCase.execute).toHaveBeenCalledWith({
+      expect(el.updateSubCounterBatchUseCase!.execute).toHaveBeenCalledWith({
         editionId: 'edition-2024', subCounterId: sc.id, batchId: scBatch.id, adults: 7, children: 1, families: 0,
       })
     )
   })
 
   it('calls deleteSubCounterBatchUseCase on sub-counter batch delete', async () => {
-    el.querySelector<HTMLButtonElement>(`[data-sc-id="${sc.id}"] button[data-action="delete-sc-batch"]`)?.click()
+    el.querySelector<HTMLButtonElement>(`[data-sc-id="${sc.id}"] button[data-action="delete-sc-batch"]`)!.click()
     await vi.waitFor(() =>
-      expect(el.deleteSubCounterBatchUseCase.execute).toHaveBeenCalledWith({
+      expect(el.deleteSubCounterBatchUseCase!.execute).toHaveBeenCalledWith({
         editionId: 'edition-2024', subCounterId: sc.id, batchId: scBatch.id,
       })
     )
   })
 
   it('calls removeSubCounterUseCase on remove sub-counter click', async () => {
-    el.querySelector<HTMLButtonElement>(`button[data-action="remove-sub-counter"][data-sc-id="${sc.id}"]`)?.click()
+    el.querySelector<HTMLButtonElement>(`button[data-action="remove-sub-counter"][data-sc-id="${sc.id}"]`)!.click()
     await vi.waitFor(() =>
-      expect(el.removeSubCounterUseCase.execute).toHaveBeenCalledWith({ editionId: 'edition-2024', subCounterId: sc.id })
+      expect(el.removeSubCounterUseCase!.execute).toHaveBeenCalledWith({ editionId: 'edition-2024', subCounterId: sc.id })
     )
   })
 

@@ -54,6 +54,12 @@ export class FestEntryCounter extends HTMLElement {
   set deleteSubCounterBatchUseCase(uc: DeleteSubCounterBatchUseCase) { this.#deleteScUseCase = uc }
   set editionId(id: string) { this.#editionId = id }
 
+  get addSubCounterUseCase(): AddSubCounterUseCase | null { return this.#addScUseCase }
+  get removeSubCounterUseCase(): RemoveSubCounterUseCase | null { return this.#removeScUseCase }
+  get recordSubCounterEntriesUseCase(): RecordSubCounterEntriesUseCase | null { return this.#recordScUseCase }
+  get updateSubCounterBatchUseCase(): UpdateSubCounterBatchUseCase | null { return this.#updateScUseCase }
+  get deleteSubCounterBatchUseCase(): DeleteSubCounterBatchUseCase | null { return this.#deleteScUseCase }
+
   connectedCallback(): void {
     this.addEventListener('click', (e: Event) => {
       const target = e.target as HTMLElement | null

@@ -22,6 +22,9 @@ export class FestEntryForm extends HTMLElement {
   set registerEntryUseCase(uc: RegisterEntryUseCase) { this.#registerUseCase = uc }
   set cancelRegistrationUseCase(uc: CancelRegistrationUseCase) { this.#cancelUseCase = uc }
 
+  get registerEntryUseCase(): RegisterEntryUseCase | null { return this.#registerUseCase }
+  get cancelRegistrationUseCase(): CancelRegistrationUseCase | null { return this.#cancelUseCase }
+
   connectedCallback(): void {
     this.addEventListener('click', (e: Event) => {
       const target: HTMLElement | null = e.target as HTMLElement | null
@@ -63,8 +66,11 @@ export class FestEntryForm extends HTMLElement {
   }
 
   #renderList(): string {
-    if (!this.#registrations.length) return '<p class="text-muted small mb-0">Aucune inscription.</p>'
-    return `<ul class="list-group list-group-flush">
+    const countText = this.#registrations.length === 0 
+      ? '<p class="text-muted small mb-0">Aucune inscription.</p>'
+      : `<p class="small text-muted">Inscriptions: ${this.#registrations.length}</p>`
+    if (!this.#registrations.length) return countText
+    return `${countText}<ul class="list-group list-group-flush">
       ${this.#registrations.map(r => `
         <li class="list-group-item d-flex align-items-center justify-content-between py-1 px-0 small">
           <span>
@@ -108,6 +114,10 @@ export class FestEntryForm extends HTMLElement {
     const personName: string = this.querySelector<HTMLInputElement>('[name="personName"]')?.value.trim() ?? ''
     try {
       if (!this.#registerUseCase) return
+      // Check for duplicate name
+      if (personName && this.#registrations.some(r => r.personName.toLowerCase() === personName.toLowerCase())) {
+        return
+      }
       const reg: Registration = await this.#registerUseCase.execute({
         activityId: this.#activityId ?? '',
         slotId: this.#slotId ?? '',
@@ -117,7 +127,7 @@ export class FestEntryForm extends HTMLElement {
       this.#updateList()
       const input: HTMLInputElement | null = this.querySelector('[name="personName"]')
       if (input) input.value = ''
-      this.dispatchEvent(new CustomEvent('entry-registered', { detail: reg, bubbles: true }))
+      this.dispatchEvent(new CustomEvent('registration-added', { detail: reg, bubbles: true }))
     } catch (err) {
       this.#error(err instanceof Error ? err : new Error(String(err)))
     }

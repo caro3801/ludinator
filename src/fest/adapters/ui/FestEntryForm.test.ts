@@ -19,6 +19,7 @@ describe('FestEntryForm', () => {
     el = document.createElement('fest-entry-form') as FestEntryForm
     document.body.appendChild(el)
     el.hidden = true
+    el.registerEntryUseCase = makeUseCase<Registration>({ id: 'r-new', personName: 'New' } as Registration)
   })
 
   it('is hidden by default', () => {
@@ -53,6 +54,7 @@ describe('FestEntryForm', () => {
     await vi.waitFor(() =>
       expect(cancelUC.execute).toHaveBeenCalledWith({
         activityId: 'a-1',
+        slotId: 's-1',
         registrationId: registrations[0].id,
       })
     )
@@ -77,7 +79,7 @@ describe('FestEntryForm', () => {
     el.registerEntryUseCase = makeUseCase<Registration>({ id: 'r-3', personName: 'Charlie' } as Registration)
     el.open({ activityId: 'a-1', slotId: 's-1', registrations: [] })
     el.querySelector<HTMLInputElement>('input[name="personName"]')!.value = 'Charlie'
-    el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'))
     await vi.waitFor(() =>
       expect(el.querySelector<HTMLInputElement>('input[name="personName"]')?.value).toBe('')
     )
@@ -90,7 +92,7 @@ describe('FestEntryForm', () => {
     el.addEventListener('registration-added', (e: Event) => events.push((e as CustomEvent<Registration>).detail))
     el.open({ activityId: 'a-1', slotId: 's-1', registrations: [] })
     el.querySelector<HTMLInputElement>('input[name="personName"]')!.value = 'Charlie'
-    el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'))
     await vi.waitFor(() => expect(events[0]).toBe(newReg))
   })
 
@@ -98,7 +100,7 @@ describe('FestEntryForm', () => {
     el.registerEntryUseCase = makeUseCase<Registration>({ id: 'r-1', personName: 'Alice' } as Registration)
     el.open({ activityId: 'a-1', slotId: 's-1', registrations })
     el.querySelector<HTMLInputElement>('input[name="personName"]')!.value = 'Alice'
-    el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'))
     await vi.waitFor(() =>
       expect(el.registerEntryUseCase!.execute).not.toHaveBeenCalled()
     )
@@ -120,7 +122,7 @@ describe('FestEntryForm', () => {
     el.addEventListener('fest-error', (e: Event) => errors.push((e as CustomEvent<{ message: string }>).detail))
     el.open({ activityId: 'a-1', slotId: 's-1', registrations: [] })
     el.querySelector<HTMLInputElement>('input[name="personName"]')!.value = ''
-    el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'))
     await vi.waitFor(() => expect(errors[0].message).toContain('invalid name'))
   })
 
@@ -130,7 +132,7 @@ describe('FestEntryForm', () => {
     el.open({ activityId: 'a-1', slotId: 's-1', registrations })
     const events: { registrationId: string }[] = []
     el.addEventListener('registration-cancelled', (e: Event) => events.push((e as CustomEvent<{ registrationId: string }>).detail))
-    el.querySelector<HTMLButtonElement>('button[data-action="cancel-registration"]')?.click()
+    el.querySelector<HTMLButtonElement>('button[data-action="cancel-registration"]')!.click()
     await vi.waitFor(() => expect(events[0].registrationId).toBe(registrations[0].id))
   })
 
@@ -139,14 +141,14 @@ describe('FestEntryForm', () => {
     const errors: { message: string }[] = []
     el.addEventListener('fest-error', (e: Event) => errors.push((e as CustomEvent<{ message: string }>).detail))
     el.open({ activityId: 'a-1', slotId: 's-1', registrations })
-    el.querySelector<HTMLButtonElement>('button[data-action="cancel-registration"]')?.click()
+    el.querySelector<HTMLButtonElement>('button[data-action="cancel-registration"]')!.click()
     await vi.waitFor(() => expect(errors[0].message).toContain('not found'))
   })
 
   it('reopens form after delete', async () => {
     el.cancelRegistrationUseCase = makeUseCase<undefined>(undefined)
     el.open({ activityId: 'a-1', slotId: 's-1', registrations })
-    el.querySelector<HTMLButtonElement>('button[data-action="cancel-registration"]')?.click()
+    el.querySelector<HTMLButtonElement>('button[data-action="cancel-registration"]')!.click()
     await vi.waitFor(() => expect(el.hidden).toBe(false))
   })
 
@@ -154,7 +156,7 @@ describe('FestEntryForm', () => {
     el.registerEntryUseCase = makeUseCase<Registration>({ id: 'r-3', personName: 'Charlie' } as Registration)
     el.open({ activityId: 'a-1', slotId: 's-1', registrations: [] })
     el.querySelector<HTMLInputElement>('input[name="personName"]')!.value = 'Charlie'
-    el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'))
     await vi.waitFor(() => expect(el.textContent).toContain('1'))
   })
 })
