@@ -62,7 +62,7 @@ describe('Ticket', () => {
       ticket.addLine('prod-2', 'Jus', 1.50, 1)
       ticket.addLine('prod-1', 'Crêpe', 2.50, 2)
       expect(ticket.lines).toHaveLength(2)
-      const crêpe = ticket.lines.find(l => l.productId === 'prod-1')
+      const crêpe = ticket.lines.find(l => l.productId === 'prod-1')!
       expect(crêpe.quantity).toBe(3)
       expect(crêpe.subtotal).toBe(7.50)
     })
@@ -305,7 +305,7 @@ describe('TicketLine (via Ticket.addLine)', () => {
 
   it('throws ValidationError when unitPrice is a string', () => {
     const ticket = Ticket.create()
-    expect(() => ticket.addLine('prod-1', 'Crêpe', 'abc', 1)).toThrow(ValidationError)
+    expect(() => ticket.addLine('prod-1', 'Crêpe', 'abc' as unknown as number, 1)).toThrow(ValidationError)
   })
 
   it('has a non-empty id string', () => {

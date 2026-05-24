@@ -4,14 +4,15 @@ import { InMemoryTicketRepository } from '../../adapters/storage/InMemoryTicketR
 import { Ticket } from '../../domain/model/Ticket'
 
 describe('GetSalesStats', () => {
-  let ticketRepo, useCase
+  let ticketRepo: InMemoryTicketRepository
+  let useCase: GetSalesStats
 
   beforeEach(() => {
     ticketRepo = new InMemoryTicketRepository()
     useCase = new GetSalesStats(ticketRepo)
   })
 
-  function makeClosedTicket(lines) {
+  function makeClosedTicket(lines: { productId: string; productName: string; unitPrice: number; quantity: number }[]) {
     const ticket = Ticket.create()
     for (const { productId, productName, unitPrice, quantity } of lines) {
       ticket.addLine(productId, productName, unitPrice, quantity)
