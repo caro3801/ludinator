@@ -37,8 +37,8 @@ describe('MioumProjection', () => {
     store.append({ id: '1', module: 'mioum', type: 'TicketOpened', aggregateId: ticket.id, payload: ticket, occurredAt: new Date().toISOString() })
     const state = new MioumProjection(store).rebuild()
     expect(state.currentTicket).toBeDefined()
-    expect(state.currentTicket.id).toBe(ticket.id)
-    expect(state.currentTicket.status).toBe('open')
+    expect(state.currentTicket!.id).toBe(ticket.id)
+    expect(state.currentTicket!.status).toBe('open')
   })
 
   it('clears currentTicket when ticket is closed', () => {
