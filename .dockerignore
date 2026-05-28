@@ -1,0 +1,10 @@
+node_modules
+.dist
+.dockerignore
+.git
+.gitignore
+.idea
+.vibe
+.vscode
+*.md
+LICENSE
