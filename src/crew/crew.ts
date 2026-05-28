@@ -1,6 +1,7 @@
 import { Volunteer } from './domain/model/Volunteer'
 import { Post } from './domain/model/Post'
 import { Schedule } from './domain/model/Schedule'
+import { VolunteerCreated, PostCreated } from './domain/events'
 import { CreateVolunteer } from './application/usecases/CreateVolunteer'
 import { UpdateVolunteerName } from './application/usecases/UpdateVolunteerName'
 import { CreatePost } from './application/usecases/CreatePost'
@@ -48,7 +49,7 @@ type EditSlotFormElement = HTMLElement & { updateSlotInPostUseCase: { execute: (
 type EditPostNameFormElement = HTMLElement & { updatePostNameUseCase: { execute: (params: { postId: string; name: string }) => Promise<unknown> }; open: (detail: { postId: string; name: string }) => void }
 type AssignFormElement = HTMLElement & { editionId: EditionId; assignVolunteerUseCase: { execute: (params: { volunteerId: string; slotId: string; schedule: unknown; editionId: string }) => Promise<unknown> }; volunteers: Volunteer[]; posts: Post[]; selectSlot: (detail: { slotId: string; postId: string }) => void }
 type PlanningViewElement = HTMLElement & { refresh: (params: { scheduleRepo: ScheduleRepository; volunteerRepo: VolunteerRepository; postRepo: PostRepository }, editionId: EditionId) => Promise<void> }
-type StatsViewElement = HTMLElement & { refresh: (params: { scheduleRepo: ScheduleRepository; volunteerRepo: VolunteerRepository }, editionId: EditionId) => Promise<void> }
+type StatsViewElement = HTMLElement & { refresh: (params: { scheduleRepo: ScheduleRepository; volunteerRepo: VolunteerRepository; postRepo: PostRepository }, editionId: EditionId) => Promise<void> }
 
 // Get DOM elements with proper typing
 const volunteerForm = document.querySelector<VolunteerFormElement>('crew-volunteer-form')
@@ -203,10 +204,8 @@ ws.onConnectionChange(({ connected, queueLength }: { connected: boolean; queueLe
 })
 
 // Event listeners for domain events
-interface VolunteerCreatedDetail { name: string }
 interface VolunteerNameUpdatedDetail { volunteerId: string; name: string }
 interface VolunteerDeleteRequestedDetail { volunteerId: string }
-interface PostCreatedDetail { name: string; minVolunteers: number }
 interface PostNameUpdatedDetail { postId: string; name: string }
 interface PostEditNameRequestedDetail { postId: string; name: string }
 interface PostDeleteRequestedDetail { postId: string }
@@ -219,8 +218,8 @@ interface VolunteerAssignedDetail { volunteer: unknown; slot: unknown; schedule:
 interface AssignmentDeleteRequestedDetail { assignmentId: string }
 
 document.addEventListener('volunteer-created', (e) => {
-  const detail = (e as CustomEvent<VolunteerCreatedDetail>).detail
-  ws.send('crew', 'CreateVolunteer', detail).catch((err) => dispatchError((err as Error).message))
+  const event = (e as CustomEvent<VolunteerCreated>).detail
+  ws.send('crew', 'CreateVolunteer', { name: event.payload.name }).catch((err) => dispatchError((err as Error).message))
 })
 
 document.addEventListener('volunteer-name-updated', (e) => {
@@ -238,8 +237,8 @@ document.addEventListener('volunteer-delete-requested', (e) => {
 })
 
 document.addEventListener('post-created', (e) => {
-  const detail = (e as CustomEvent<PostCreatedDetail>).detail
-  ws.send('crew', 'CreatePost', detail).catch((err) => dispatchError((err as Error).message))
+  const event = (e as CustomEvent<PostCreated>).detail
+  ws.send('crew', 'CreatePost', { name: event.payload.name, minVolunteers: event.payload.minVolunteers }).catch((err) => dispatchError((err as Error).message))
 })
 
 document.addEventListener('post-name-updated', (e) => {
