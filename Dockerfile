@@ -2,26 +2,29 @@ FROM oven/bun:1
 
 WORKDIR /app
 
+# Create non-root user
+RUN useradd -m appuser
+
 # Copy package files
 COPY package.json package-lock.json bunfig.toml ./
 
-# Install all dependencies (including devDependencies for build)
+# Install all dependencies
 RUN bun install
 
-# Copy source files
-COPY src/ ./src/
-COPY tsconfig.json tsconfig.node.json ./
-COPY vite.config.ts ./
-COPY index.html fest.html mioum.html admin.html favicon.svg ./
+# Create /data directory for Railway's persistent volume and set permissions
+RUN mkdir -p /data && chown appuser:appuser /data
 
-# Build frontend
+# Copy app files
+COPY --chown=appuser:appuser src/ ./src/
+COPY --chown=appuser:appuser tsconfig.json tsconfig.node.json ./
+COPY --chown=appuser:appuser vite.config.ts ./
+COPY --chown=appuser:appuser index.html fest.html mioum.html admin.html favicon.svg ./
+
+# Build frontend (now builds all HTML entry points)
+USER appuser
 RUN bun run build
 
-# Create data directory for SQLite
-RUN mkdir -p /data
-
-# Set non-root user for security
-RUN useradd -m appuser && chown -R appuser /app
+# Runtime user
 USER appuser
 
 # Railway sets PORT, we use it via process.env.PORT

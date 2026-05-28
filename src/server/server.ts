@@ -43,8 +43,11 @@ const server = Bun.serve<unknown>({
   port,
   hostname: '0.0.0.0',
   async fetch(req: Request, server: Server<unknown>): Promise<Response | undefined> {
-    // Try to upgrade to WebSocket first (handles connections to / or /ws)
-    if (server.upgrade(req, { data: undefined })) {
+    // Check if this is a WebSocket upgrade request
+    const upgradeHeader = req.headers.get('upgrade')
+    const isWebSocketUpgrade = upgradeHeader?.toLowerCase() === 'websocket'
+    
+    if (isWebSocketUpgrade && server.upgrade(req, { data: undefined })) {
       return undefined
     }
     

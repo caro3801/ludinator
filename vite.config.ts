@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite'
+import { resolve } from 'path'
 
 export default defineConfig({
   server: {
@@ -14,6 +15,16 @@ export default defineConfig({
       '@mioum': '/src/mioum',
       '@server': '/src/server',
       '@client': '/src/client',
+    },
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        index: resolve(__dirname, 'index.html'),
+        fest: resolve(__dirname, 'fest.html'),
+        mioum: resolve(__dirname, 'mioum.html'),
+        admin: resolve(__dirname, 'admin.html'),
+      },
     },
   },
 })
