@@ -43,21 +43,22 @@ const server = Bun.serve<unknown>({
   port,
   hostname: '0.0.0.0',
   async fetch(req: Request, server: Server<unknown>): Promise<Response | undefined> {
+    // Try to upgrade to WebSocket first (handles connections to / or /ws)
+    if (server.upgrade(req, { data: undefined })) {
+      return undefined
+    }
+    
     // Serve static files from dist/
     if (req.method === 'GET') {
       const url = new URL(req.url)
-      if (url.pathname.startsWith('/ws')) {
-        if (server.upgrade(req, { data: undefined })) return undefined
-      } else {
-        const filePath = `dist${url.pathname === '/' ? '/index.html' : url.pathname}`
-        try {
-          const file = Bun.file(filePath)
-          if (await file.exists()) {
-            return new Response(file)
-          }
-        } catch {
-          // File not found, fall through
+      const filePath = `dist${url.pathname === '/' ? '/index.html' : url.pathname}`
+      try {
+        const file = Bun.file(filePath)
+        if (await file.exists()) {
+          return new Response(file)
         }
+      } catch {
+        // File not found, fall through
       }
     }
     return new Response('ludinator server', { status: 200 })
