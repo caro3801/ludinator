@@ -18,14 +18,19 @@ interface AdminPayload {
   module?: string
 }
 
-const db = new Database('ludinator.db')
+const port = parseInt(process.env.PORT || '3000')
+const dbPath = process.env.RAILWAY_VOLUME_MOUNT_PATH
+  ? `${process.env.RAILWAY_VOLUME_MOUNT_PATH}/ludinator.db`
+  : 'ludinator.db'
+
+const db = new Database(dbPath)
 
 // Initialiser EventStore avec la base partagée
-const eventStore = new EventStore()
+const eventStore = new EventStore(dbPath)
 // Note: EventStore crée sa propre instance de Database, donc on ne peut pas la partager directement
 // Solution: modifier EventStore pour accepter une Database en paramètre OU créer une nouvelle connexion
 // Pour l'instant, créons une nouvelle connexion pour admin
-const adminDb = new Database('ludinator.db')
+const adminDb = new Database(dbPath)
 
 const dispatcher = new CommandDispatcher(eventStore)
 const clients: Set<ServerWebSocket<unknown>> = new Set()
@@ -35,10 +40,26 @@ const adminRepo = new SqliteAdminRepository(adminDb)
 const adminHandler = new AdminCommandHandler(adminRepo, eventStore)
 
 const server = Bun.serve<unknown>({
-  port: 3000,
+  port,
   hostname: '0.0.0.0',
-  fetch(req: Request, server: Server<unknown>): Response | undefined {
-    if (server.upgrade(req, { data: undefined })) return undefined
+  async fetch(req: Request, server: Server<unknown>): Promise<Response | undefined> {
+    // Serve static files from dist/
+    if (req.method === 'GET') {
+      const url = new URL(req.url)
+      if (url.pathname.startsWith('/ws')) {
+        if (server.upgrade(req, { data: undefined })) return undefined
+      } else {
+        const filePath = `dist${url.pathname === '/' ? '/index.html' : url.pathname}`
+        try {
+          const file = Bun.file(filePath)
+          if (await file.exists()) {
+            return new Response(file)
+          }
+        } catch {
+          // File not found, fall through
+        }
+      }
+    }
     return new Response('ludinator server', { status: 200 })
   },
   websocket: {
@@ -96,6 +117,6 @@ const server = Bun.serve<unknown>({
   },
 })
 
-console.log('ludinator server running on ws://0.0.0.0:3000')
+console.log(`ludinator server running on ws://0.0.0.0:${port}`)
 
 export { server }

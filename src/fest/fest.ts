@@ -16,8 +16,8 @@ import './adapters/ui/FestProgrammeView'
 type ActivityJSON = { id: string; name: string; location: string | null; slots: { id: string; registrations: unknown[] }[] }
 
 const EDITION_ID = 'edition-2024'
-const wsPort = 3000
-const ws = new WsClient(`ws://${window.location.hostname}:${wsPort}`)
+const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+const ws = new WsClient(`${wsProtocol}//${window.location.host}`)
 
 const activityForm = document.querySelector<HTMLElement & { createActivityUseCase: unknown }>('fest-activity-form')
 const activityList = document.querySelector<HTMLElement & { refresh: (repo: unknown) => Promise<void> }>('fest-activity-list')

@@ -18,8 +18,8 @@ import './adapters/ui/MioumTicketView'
 import './adapters/ui/MioumStatsView'
 import './adapters/ui/MioumHistoryView'
 
-const wsPort = 3000
-const ws = new WsClient(`ws://${window.location.hostname}:${wsPort}`)
+const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+const ws = new WsClient(`${wsProtocol}//${window.location.host}`)
 
 // Get DOM elements with proper typing
 const productForm = document.querySelector<HTMLElement & { createProductUseCase: unknown }>('mioum-product-form')

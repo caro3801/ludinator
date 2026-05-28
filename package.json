@@ -11,7 +11,8 @@
     "test:server": "bun test src/server/",
     "test:all": "vitest run --exclude='**/server/**' && bun test src/server/",
     "type-check": "tsc --noEmit",
-    "type-check:watch": "tsc --noEmit --watch"
+    "type-check:watch": "tsc --noEmit --watch",
+    "start": "bun run src/server/server.ts"
   },
   "keywords": [],
   "author": "",

@@ -28,7 +28,8 @@ export class AdminPanel extends HTMLElement {
 
   constructor() {
     super()
-    this.#ws = new WsClient(`ws://${window.location.hostname}:3000`)
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    this.#ws = new WsClient(`${wsProtocol}//${window.location.host}`)
     this.#authenticated = localStorage.getItem(this.#storageKey) === 'true'
   }
 

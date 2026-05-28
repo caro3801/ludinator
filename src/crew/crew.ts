@@ -34,8 +34,8 @@ import './adapters/ui/CrewScheduleView'
 import './adapters/ui/CrewVolunteerPlanningView'
 
 const EDITION_ID: EditionId = 'edition-2024'
-const wsPort = 3000
-const ws = new WsClient(`ws://${window.location.hostname}:${wsPort}`)
+const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+const ws = new WsClient(`${wsProtocol}//${window.location.host}`)
 
 // Types for custom elements
 type VolunteerFormElement = HTMLElement & { createVolunteerUseCase: CreateVolunteer | null }
