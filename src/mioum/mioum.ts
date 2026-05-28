@@ -12,11 +12,11 @@ import { GetSalesStats } from './application/usecases/GetSalesStats'
 import { WsClient } from '../client/WsClient'
 
 // Import all UI components to register them
-import './adapters/ui/MioumProductForm.ts'
-import './adapters/ui/MioumProductList.ts'
-import './adapters/ui/MioumTicketView.ts'
-import './adapters/ui/MioumStatsView.ts'
-import './adapters/ui/MioumHistoryView.ts'
+import './adapters/ui/MioumProductForm'
+import './adapters/ui/MioumProductList'
+import './adapters/ui/MioumTicketView'
+import './adapters/ui/MioumStatsView'
+import './adapters/ui/MioumHistoryView'
 
 const wsPort = 3000
 const ws = new WsClient(`ws://${window.location.hostname}:${wsPort}`)
@@ -101,7 +101,8 @@ function computeStats(tickets: RawTicket[]): {
 }
 
 // Handle state updates from WebSocket
-ws.onState('mioum', ({ products, tickets, currentTicket }: { products: unknown[]; tickets: RawTicket[]; currentTicket: RawTicket | null }) => {
+ws.onState('mioum', (data: unknown) => {
+  const { products, tickets, currentTicket } = data as { products: unknown[]; tickets: RawTicket[]; currentTicket: RawTicket | null }
   if (productList) {
     productList.refresh(toProductRepo(products as unknown[]))
   }

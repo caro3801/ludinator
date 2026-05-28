@@ -5,7 +5,7 @@ import { Post } from '../../domain/model/Post'
 import { TimeWindow } from '../../domain/model/TimeWindow'
 
 describe('LocalStoragePostRepository', () => {
-  let repo
+  let repo: LocalStoragePostRepository
 
   beforeEach(() => {
     localStorage.clear()
@@ -17,9 +17,9 @@ describe('LocalStoragePostRepository', () => {
     await repo.save(post)
 
     const found = await repo.findById(post.id)
-    expect(found.id).toBe(post.id)
-    expect(found.name.value).toBe('Accueil')
-    expect(found.minVolunteers).toBe(2)
+    expect(found?.id).toBe(post.id)
+    expect(found?.name.value).toBe('Accueil')
+    expect(found?.minVolunteers).toBe(2)
   })
 
   it('persists slots alongside the post', async () => {
@@ -28,8 +28,8 @@ describe('LocalStoragePostRepository', () => {
     await repo.save(post)
 
     const found = await repo.findById(post.id)
-    expect(found.slots).toHaveLength(1)
-    expect(found.slots[0].window.startTime).toBe('09:00')
+    expect(found?.slots).toHaveLength(1)
+    expect(found?.slots[0].window.startTime).toBe('09:00')
   })
 
   it('returns null when post is not found', async () => {
@@ -48,7 +48,7 @@ describe('LocalStoragePostRepository', () => {
     await repo.save(post)
 
     const found = await repo.findSlotById(slot.id)
-    expect(found.id).toBe(slot.id)
+    expect(found?.id).toBe(slot.id)
   })
 
   it('returns null when slot is not found', async () => {

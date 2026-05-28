@@ -11,13 +11,82 @@ import { RecordSubCounterEntries } from '../../fest/application/usecases/RecordS
 import { UpdateSubCounterBatch } from '../../fest/application/usecases/UpdateSubCounterBatch'
 import { DeleteSubCounterBatch } from '../../fest/application/usecases/DeleteSubCounterBatch'
 import { FestProjection } from './FestProjection'
+import { ActivityId, FestSlotId, EntryId, RegistrationId, EditionId } from '../../shared/types'
 
-const EDITION_ID = 'edition-2024'
+const EDITION_ID: EditionId = 'edition-2024'
+
+interface TimeWindow {
+  day: string
+  startTime: string
+  endTime: string
+}
+
+interface Slot {
+  id: FestSlotId
+  activityId: ActivityId
+  window: TimeWindow
+  min: number | null
+  max: number | null
+  registrations: Registration[]
+}
+
+interface Activity {
+  id: ActivityId
+  name: string
+  location: string | null
+  slots: Slot[]
+}
+
+interface Registration {
+  id: RegistrationId
+  personName: string
+}
+
+interface Batch {
+  id: string
+  adults: number
+  children: number
+  families: number
+  timestamp: number
+}
+
+interface SubCounter {
+  id: string
+  label: string
+  batches: Batch[]
+}
+
+interface EntryLog {
+  id: EntryId
+  editionId: string
+  subCounters: SubCounter[]
+}
 
 interface FestState {
-  activities: { id: string; name: string; slots: { id: string }[] }[]
-  entryLog: { id: string; subCounters: { id: string }[] } | null
+  activities: Activity[]
+  entryLog: EntryLog | null
 }
+
+type FestDomainEvent = {
+  type: string
+  module: string
+  aggregateId: string | null
+  payload: unknown
+  occurredAt: string
+}
+
+type CreateActivityPayload = { name: string }
+type UpdateActivityNamePayload = { activityId: ActivityId; name: string }
+type DeleteActivityPayload = { activityId: ActivityId }
+type AddSlotToActivityPayload = { activityId: ActivityId; day: string; startTime: string; endTime: string; min?: number | null; max?: number | null }
+type RegisterToActivityPayload = { activityId: ActivityId; slotId: FestSlotId; personName: string }
+type CancelRegistrationPayload = { activityId: ActivityId; slotId: FestSlotId; registrationId: RegistrationId }
+type UpdateRegistrationPayload = { activityId: ActivityId; slotId: FestSlotId; registrationId: RegistrationId; personName: string }
+type AddSubCounterPayload = { label: string }
+type RemoveSubCounterPayload = { subCounterId: string }
+type RecordSubCounterEntriesPayload = { subCounterId: string; adults: number; children: number; families: number }
+type UpdateSubCounterBatchPayload = { subCounterId: string; batchId: string; adults: number; children: number; families: number }
+type DeleteSubCounterBatchPayload = { subCounterId: string; batchId: string }
 
 /**
  * Handles commands for the Fest module
@@ -32,60 +101,48 @@ export class FestCommandHandler {
   /**
    * Execute a command and return the domain event
    */
-  execute(action: string, payload: unknown): unknown {
+  execute(action: string, payload: unknown): FestDomainEvent {
     const state = this.#projection.rebuild() as FestState
-
-    type CreateActivityPayload = { name: string }
-    type UpdateActivityNamePayload = { activityId: string; name: string }
-    type DeleteActivityPayload = { activityId: string }
-    type AddSlotToActivityPayload = { activityId: string; day: string; startTime: string; endTime: string; min?: number | null; max?: number | null }
-    type RegisterToActivityPayload = { activityId: string; slotId: string; personName: string }
-    type CancelRegistrationPayload = { activityId: string; slotId: string; registrationId: string }
-    type UpdateRegistrationPayload = { activityId: string; slotId: string; registrationId: string; personName: string }
-    type AddSubCounterPayload = { label: string }
-    type RemoveSubCounterPayload = { subCounterId: string }
-    type RecordSubCounterEntriesPayload = { subCounterId: string; adults: number; children: number; families: number }
-    type UpdateSubCounterBatchPayload = { subCounterId: string; batchId: string; adults: number; children: number; families: number }
-    type DeleteSubCounterBatchPayload = { subCounterId: string; batchId: string }
 
     switch (action) {
       case 'CreateActivity':
         return new CreateActivity().execute(payload as CreateActivityPayload)
 
       case 'UpdateActivityName': {
-        const activity = state.activities.find((a) => a.id === (payload as UpdateActivityNamePayload).activityId)
-        if (!activity) throw new Error(`Activity not found: ${(payload as UpdateActivityNamePayload).activityId}`)
-        return new UpdateActivityName().execute({ activity, name: (payload as UpdateActivityNamePayload).name })
+        const p = payload as UpdateActivityNamePayload
+        const activity = state.activities.find((a) => a.id === p.activityId)
+        if (!activity) throw new Error(`Activity not found: ${p.activityId}`)
+        return new UpdateActivityName().execute({ activity, name: p.name })
       }
 
       case 'DeleteActivity':
         return new DeleteActivity().execute(payload as DeleteActivityPayload)
 
       case 'AddSlotToActivity': {
-        const activity = state.activities.find((a) => a.id === (payload as AddSlotToActivityPayload).activityId)
-        if (!activity) throw new Error(`Activity not found: ${(payload as AddSlotToActivityPayload).activityId}`)
         const p = payload as AddSlotToActivityPayload
+        const activity = state.activities.find((a) => a.id === p.activityId)
+        if (!activity) throw new Error(`Activity not found: ${p.activityId}`)
         return new AddSlotToActivity().execute({ activity, day: p.day, startTime: p.startTime, endTime: p.endTime, min: p.min ?? null, max: p.max ?? null })
       }
 
       case 'RegisterToActivity': {
-        const activity = state.activities.find((a) => a.id === (payload as RegisterToActivityPayload).activityId)
-        if (!activity) throw new Error(`Activity not found: ${(payload as RegisterToActivityPayload).activityId}`)
         const p = payload as RegisterToActivityPayload
+        const activity = state.activities.find((a) => a.id === p.activityId)
+        if (!activity) throw new Error(`Activity not found: ${p.activityId}`)
         return new RegisterToActivity().execute({ activity, slotId: p.slotId, personName: p.personName })
       }
 
       case 'CancelRegistration': {
-        const activity = state.activities.find((a) => a.id === (payload as CancelRegistrationPayload).activityId)
-        if (!activity) throw new Error(`Activity not found: ${(payload as CancelRegistrationPayload).activityId}`)
         const p = payload as CancelRegistrationPayload
+        const activity = state.activities.find((a) => a.id === p.activityId)
+        if (!activity) throw new Error(`Activity not found: ${p.activityId}`)
         return new CancelRegistration().execute({ activity, slotId: p.slotId, registrationId: p.registrationId })
       }
 
       case 'UpdateRegistration': {
-        const activity = state.activities.find((a) => a.id === (payload as UpdateRegistrationPayload).activityId)
-        if (!activity) throw new Error(`Activity not found: ${(payload as UpdateRegistrationPayload).activityId}`)
         const p = payload as UpdateRegistrationPayload
+        const activity = state.activities.find((a) => a.id === p.activityId)
+        if (!activity) throw new Error(`Activity not found: ${p.activityId}`)
         return new UpdateRegistration().execute({ activity, slotId: p.slotId, registrationId: p.registrationId, personName: p.personName })
       }
 

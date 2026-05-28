@@ -1,16 +1,18 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest'
+import { FestActivityList } from './FestActivityList'
 import './FestActivityList'
 import { Activity } from '../../domain/model/Activity'
 import { TimeWindow } from '../../domain/model/TimeWindow'
+import type { ActivityRepository } from '../../ports/ActivityRepository'
 
-const repoWith = (activities) => ({ findAll: async () => activities })
+const repoWith = (activities: Activity[]): ActivityRepository => ({ findAll: async () => activities } as unknown as ActivityRepository)
 
 describe('FestActivityList', () => {
-  let el
+  let el: FestActivityList
 
   beforeEach(() => {
-    el = document.createElement('fest-activity-list')
+    el = document.createElement('fest-activity-list') as FestActivityList
     document.body.appendChild(el)
   })
 
@@ -23,7 +25,7 @@ describe('FestActivityList', () => {
     const a1 = Activity.create('Quiz')
     const a2 = Activity.create('Escape Game')
     await el.refresh(repoWith([a1, a2]))
-    expect(el.querySelectorAll('[data-activity-item]')).toHaveLength(2)
+    expect(Array.from(el.querySelectorAll('[data-activity-item]'))).toHaveLength(2)
     expect(el.textContent).toContain('Quiz')
     expect(el.textContent).toContain('Escape Game')
   })
@@ -46,23 +48,23 @@ describe('FestActivityList', () => {
 
   it('renders rename and delete buttons per activity', async () => {
     await el.refresh(repoWith([Activity.create('Quiz')]))
-    expect(el.querySelector('button[data-action="rename-activity"]')).not.toBeNull()
-    expect(el.querySelector('button[data-action="delete-activity"]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="rename-activity"]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="delete-activity"]')).not.toBeNull()
   })
 
   it('renders an add-entry button per slot', async () => {
     const a = Activity.create('Quiz')
     a.addSlot(new TimeWindow('saturday', '10:00', '12:00'))
     await el.refresh(repoWith([a]))
-    expect(el.querySelector('button[data-action="add-entry"]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="add-entry"]')).not.toBeNull()
   })
 
   it('dispatches activity-rename-requested with activityId and name', async () => {
     const a = Activity.create('Quiz')
     await el.refresh(repoWith([a]))
-    const events = []
-    el.addEventListener('activity-rename-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="rename-activity"]').click()
+    const events: { activityId: string; name: string }[] = []
+    el.addEventListener('activity-rename-requested', (e: Event) => events.push((e as CustomEvent<{ activityId: string; name: string }>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="rename-activity"]')?.click()
     expect(events[0].activityId).toBe(a.id)
     expect(events[0].name).toBe('Quiz')
   })
@@ -70,9 +72,9 @@ describe('FestActivityList', () => {
   it('dispatches activity-delete-requested with activityId', async () => {
     const a = Activity.create('Quiz')
     await el.refresh(repoWith([a]))
-    const events = []
-    el.addEventListener('activity-delete-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="delete-activity"]').click()
+    const events: { activityId: string }[] = []
+    el.addEventListener('activity-delete-requested', (e: Event) => events.push((e as CustomEvent<{ activityId: string }>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="delete-activity"]')?.click()
     expect(events[0].activityId).toBe(a.id)
   })
 
@@ -80,9 +82,9 @@ describe('FestActivityList', () => {
     const a = Activity.create('Quiz')
     a.addSlot(new TimeWindow('saturday', '10:00', '12:00'))
     await el.refresh(repoWith([a]))
-    const events = []
-    el.addEventListener('add-entry-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="add-entry"]').click()
+    const events: { activityId: string; slotId: string; registrations: unknown[] }[] = []
+    el.addEventListener('add-entry-requested', (e: Event) => events.push((e as CustomEvent<{ activityId: string; slotId: string; registrations: unknown[] }>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="add-entry"]')?.click()
     expect(events[0].activityId).toBe(a.id)
     expect(events[0].slotId).toBe(a.slots[0].id)
     expect(Array.isArray(events[0].registrations)).toBe(true)

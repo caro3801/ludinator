@@ -1,26 +1,26 @@
 import { ValidationError } from '../errors/ValidationError'
 
 export class TimeWindow {
-  #day
-  #startTime
-  #endTime
+  #day: string
+  #startTime: string
+  #endTime: string
 
-  constructor(day, startTime, endTime) {
+  constructor(day: string, startTime: string, endTime: string) {
     if (startTime >= endTime) throw new ValidationError('startTime must be before endTime')
     this.#day = day
     this.#startTime = startTime
     this.#endTime = endTime
   }
 
-  get day() { return this.#day }
-  get startTime() { return this.#startTime }
-  get endTime() { return this.#endTime }
+  get day(): string { return this.#day }
+  get startTime(): string { return this.#startTime }
+  get endTime(): string { return this.#endTime }
 
-  get durationHours() {
-    const toMinutes = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+  get durationHours(): number {
+    const toMinutes = (t: string): number => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
     return (toMinutes(this.#endTime) - toMinutes(this.#startTime)) / 60
   }
 
-  toJSON() { return { day: this.#day, startTime: this.#startTime, endTime: this.#endTime } }
-  static fromJSON({ day, startTime, endTime }) { return new TimeWindow(day, startTime, endTime) }
+  toJSON(): { day: string, startTime: string, endTime: string } { return { day: this.#day, startTime: this.#startTime, endTime: this.#endTime } }
+  static fromJSON(data: { day: string, startTime: string, endTime: string }): TimeWindow { return new TimeWindow(data.day, data.startTime, data.endTime) }
 }

@@ -1,0 +1,2 @@
+[test]
+pathIgnorePatterns = ["**/adapters/ui/**", "**/{fest,crew,mioum}/adapters/storage/**"]

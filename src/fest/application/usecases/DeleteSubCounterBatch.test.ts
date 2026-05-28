@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { DeleteSubCounterBatch } from './DeleteSubCounterBatch'
 import { SubCounterBatchDeleted } from '../../domain/events'
 import { EntryLog } from '../../domain/model/EntryLog'
+import type { EntryLogData } from '../../domain/model/EntryLog'
 
 describe('DeleteSubCounterBatch', () => {
   it('emits SubCounterBatchDeleted with batch removed', () => {
@@ -11,8 +12,9 @@ describe('DeleteSubCounterBatch', () => {
     const batchId = batch.id
     const subCounterId = sc.id
 
-    const event = new DeleteSubCounterBatch().execute({ entryLog: log.toJSON(), subCounterId, batchId })
+    const entryLog = log.toJSON() as EntryLogData
+    const event = new DeleteSubCounterBatch().execute({ entryLog, subCounterId, batchId })
     expect(event).toBeInstanceOf(SubCounterBatchDeleted)
-    expect(event.payload.subCounters[0].batches).toHaveLength(0)
+    expect((event.payload as { subCounters: { batches: unknown[] }[] }).subCounters[0].batches).toHaveLength(0)
   })
 })

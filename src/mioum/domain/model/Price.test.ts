@@ -19,10 +19,10 @@ describe('Price', () => {
   })
 
   it('throws ValidationError for a non-numeric string', () => {
-    expect(() => Price.create('abc')).toThrow(ValidationError)
+    expect(() => Price.create('abc' as unknown as number)).toThrow(ValidationError)
   })
 
   it('throws ValidationError for null', () => {
-    expect(() => Price.create(null)).toThrow(ValidationError)
+    expect(() => Price.create(null as unknown as number)).toThrow(ValidationError)
   })
 })

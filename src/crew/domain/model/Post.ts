@@ -1,15 +1,17 @@
 import { PostName } from './PostName'
 import { TimeSlot } from './TimeSlot'
+import { TimeWindow } from './TimeWindow'
 import { ValidationError } from '../errors/ValidationError'
 import { generateId } from '../../../shared/generateId'
+import { PostId, SlotId } from '../../../shared/types'
 
 export class Post {
-  #id
-  #name
-  #minVolunteers
-  #slots
+  #id: PostId
+  #name: PostName
+  #minVolunteers: number
+  #slots: TimeSlot[]
 
-  constructor(id, name, minVolunteers) {
+  constructor(id: PostId, name: PostName, minVolunteers: number) {
     this.#id = id
     this.#name = name
     this.#minVolunteers = minVolunteers
@@ -17,32 +19,32 @@ export class Post {
   }
 
   get id() { return this.#id }
-  get name() { return this.#name }
-  get minVolunteers() { return this.#minVolunteers }
-  get slots() { return [...this.#slots] }
+  get name(): PostName { return this.#name }
+  get minVolunteers(): number { return this.#minVolunteers }
+  get slots(): TimeSlot[] { return [...this.#slots] }
 
-  updateName(rawName) {
+  updateName(rawName: string): void {
     this.#name = new PostName(rawName)
   }
 
-  addSlot(window) {
+  addSlot(window: TimeWindow): TimeSlot {
     const slot = TimeSlot.create(this.#id, window)
     this.#slots.push(slot)
     return slot
   }
 
-  removeSlot(slotId) {
+  removeSlot(slotId: string): void {
     this.#slots = this.#slots.filter(s => s.id !== slotId)
   }
 
-  updateSlotWindow(slotId, newWindow) {
+  updateSlotWindow(slotId: string, newWindow: TimeWindow): TimeSlot {
     const slot = this.#slots.find(s => s.id === slotId)
     if (!slot) throw new ValidationError(`Slot not found: ${slotId}`)
     slot.updateWindow(newWindow)
     return slot
   }
 
-  toJSON() {
+  toJSON(): { id: PostId, name: string, minVolunteers: number, slots: { id: SlotId, postId: PostId, window: { day: string, startTime: string, endTime: string } }[] } {
     return {
       id: this.#id,
       name: this.#name.value,
@@ -51,13 +53,13 @@ export class Post {
     }
   }
 
-  static fromJSON({ id, name, minVolunteers, slots }) {
-    const post = new Post(id, new PostName(name), minVolunteers)
-    post.#slots = slots.map(s => TimeSlot.fromJSON(s))
+  static fromJSON(data: { id: PostId, name: string, minVolunteers: number, slots: { id: string, postId: string, window: { day: string, startTime: string, endTime: string } }[] }): Post {
+    const post = new Post(data.id, new PostName(data.name), data.minVolunteers)
+    post.#slots = data.slots.map(s => TimeSlot.fromJSON(s))
     return post
   }
 
-  static create(rawName, minVolunteers) {
+  static create(rawName: string, minVolunteers: number): Post {
     const name = new PostName(rawName)
     if (!Number.isInteger(minVolunteers) || minVolunteers < 1) {
       throw new ValidationError('minVolunteers must be a positive integer')

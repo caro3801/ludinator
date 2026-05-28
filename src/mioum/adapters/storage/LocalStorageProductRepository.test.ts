@@ -4,7 +4,7 @@ import { LocalStorageProductRepository } from './LocalStorageProductRepository'
 import { Product } from '../../domain/model/Product'
 
 describe('LocalStorageProductRepository', () => {
-  let repo
+  let repo: LocalStorageProductRepository
 
   beforeEach(() => {
     localStorage.clear()
@@ -16,9 +16,9 @@ describe('LocalStorageProductRepository', () => {
     await repo.save(product)
 
     const found = await repo.findById(product.id)
-    expect(found.id).toBe(product.id)
-    expect(found.name.value).toBe('Bière')
-    expect(found.price.value).toBe(2.5)
+    expect(found?.id).toBe(product.id)
+    expect(found?.name.value).toBe('Bière')
+    expect(found?.price.value).toBe(2.5)
   })
 
   it('returns all saved products', async () => {
@@ -56,6 +56,6 @@ describe('LocalStorageProductRepository', () => {
     await repo.save(product)
     const repo2 = new LocalStorageProductRepository()
     const found = await repo2.findById(product.id)
-    expect(found.name.value).toBe('Bière')
+    expect(found?.name.value).toBe('Bière')
   })
 })

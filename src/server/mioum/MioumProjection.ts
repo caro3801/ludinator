@@ -1,17 +1,72 @@
 import { EventStore } from '../EventStore'
+import { PaymentMethodValue } from '../../mioum/domain/model/PaymentMethod'
+import { ProductId, TicketId, TicketLineId } from '../../shared/types'
+
+interface Product {
+  id: ProductId
+  name: string
+  price: number
+  category: string
+}
+
+interface TicketLine {
+  id: TicketLineId
+  productId: ProductId
+  productName: string
+  unitPrice: number
+  quantity: number
+  subtotal: number
+}
+
+interface Ticket {
+  id: TicketId
+  lines: TicketLine[]
+  status: 'open' | 'closed' | 'cancelled'
+  paymentMethod: PaymentMethodValue | null
+  closedAt: number | null
+  total: number
+}
+
+interface CurrentTicket {
+  id: TicketId
+  lines: TicketLine[]
+  status: 'open' | 'closed' | 'cancelled'
+  paymentMethod: PaymentMethodValue | null
+  closedAt: number | null
+  total: number
+}
 
 interface MioumState {
-  products: unknown[]
-  tickets: unknown[]
-  currentTicket: unknown | null
+  products: Product[]
+  tickets: Ticket[]
+  currentTicket: CurrentTicket | null
 }
 
 const INITIAL_STATE: MioumState = { products: [], tickets: [], currentTicket: null }
 
-interface MioumEvent {
-  type: string
-  payload: unknown
-}
+// Event payload types for type-safe event handling
+type ProductCreatedEvent = { type: 'ProductCreated'; payload: Product }
+type ProductUpdatedEvent = { type: 'ProductUpdated'; payload: Product }
+type ProductDeletedEvent = { type: 'ProductDeleted'; payload: { productId: ProductId } }
+type TicketOpenedEvent = { type: 'TicketOpened'; payload: CurrentTicket }
+type LineAddedToTicketEvent = { type: 'LineAddedToTicket'; payload: CurrentTicket }
+type LineRemovedFromTicketEvent = { type: 'LineRemovedFromTicket'; payload: CurrentTicket }
+type LineDecrementedEvent = { type: 'LineDecremented'; payload: CurrentTicket }
+type TicketClosedEvent = { type: 'TicketClosed'; payload: Ticket }
+type TicketCancelledEvent = { type: 'TicketCancelled'; payload: Ticket }
+type TicketReopenedEvent = { type: 'TicketReopened'; payload: CurrentTicket }
+
+type MioumEvent =
+  | ProductCreatedEvent
+  | ProductUpdatedEvent
+  | ProductDeletedEvent
+  | TicketOpenedEvent
+  | LineAddedToTicketEvent
+  | LineRemovedFromTicketEvent
+  | LineDecrementedEvent
+  | TicketClosedEvent
+  | TicketCancelledEvent
+  | TicketReopenedEvent
 
 function applyEvent(state: MioumState, event: MioumEvent): MioumState {
   switch (event.type) {
@@ -21,8 +76,8 @@ function applyEvent(state: MioumState, event: MioumEvent): MioumState {
     case 'ProductUpdated':
       return {
         ...state,
-        products: state.products.map((p: { id: string }) =>
-          p.id === (event.payload as { id: string }).id ? event.payload : p
+        products: state.products.map((p) =>
+          p.id === event.payload.id ? event.payload : p
         ),
       }
 
@@ -30,7 +85,7 @@ function applyEvent(state: MioumState, event: MioumEvent): MioumState {
       return {
         ...state,
         products: state.products.filter(
-          (p: { id: string }) => p.id !== (event.payload as { productId: string }).productId
+          (p) => p.id !== event.payload.productId
         ),
       }
 
@@ -43,7 +98,7 @@ function applyEvent(state: MioumState, event: MioumEvent): MioumState {
       return {
         ...state,
         currentTicket:
-          state.currentTicket && (state.currentTicket as { id: string }).id === (event.payload as { id: string }).id
+          state.currentTicket && state.currentTicket.id === event.payload.id
             ? event.payload
             : state.currentTicket,
       }
@@ -52,13 +107,13 @@ function applyEvent(state: MioumState, event: MioumEvent): MioumState {
     case 'TicketCancelled':
       return {
         ...state,
-        tickets: state.tickets.map((t: { id: string }) =>
-          t.id === (event.payload as { id: string }).id ? event.payload : t
+        tickets: state.tickets.map((t) =>
+          t.id === event.payload.id ? event.payload : t
         ).concat(
-          state.tickets.find((t: { id: string }) => t.id === (event.payload as { id: string }).id) ? [] : [event.payload]
+          state.tickets.find((t) => t.id === event.payload.id) ? [] : [event.payload]
         ),
         currentTicket:
-          state.currentTicket && (state.currentTicket as { id: string }).id === (event.payload as { id: string }).id
+          state.currentTicket && state.currentTicket.id === event.payload.id
             ? null
             : state.currentTicket,
       }
@@ -66,7 +121,7 @@ function applyEvent(state: MioumState, event: MioumEvent): MioumState {
     case 'TicketReopened':
       return {
         ...state,
-        tickets: state.tickets.filter((t: { id: string }) => t.id !== (event.payload as { id: string }).id),
+        tickets: state.tickets.filter((t) => t.id !== event.payload.id),
         currentTicket: event.payload,
       }
 
@@ -89,7 +144,11 @@ export class MioumProjection {
    * Rebuild the current state by replaying all events
    */
   rebuild(): MioumState {
-    const events = this.#store.replayModule('mioum')
+    const replayedEvents = this.#store.replayModule('mioum')
+    const events: MioumEvent[] = replayedEvents.map((e) => ({
+      type: e.type,
+      payload: e.payload,
+    })) as MioumEvent[]
     return events.reduce(applyEvent, { ...INITIAL_STATE })
   }
 }

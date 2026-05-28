@@ -9,12 +9,66 @@ import { CloseTicket } from '../../mioum/application/usecases/CloseTicket'
 import { CancelTicket } from '../../mioum/application/usecases/CancelTicket'
 import { ReopenTicket } from '../../mioum/application/usecases/ReopenTicket'
 import { MioumProjection } from './MioumProjection'
+import { PaymentMethodValue } from '../../mioum/domain/model/PaymentMethod'
+import { ProductId, TicketId, TicketLineId } from '../../shared/types'
+
+interface Product {
+  id: ProductId
+  name: string
+  price: number
+  category: string
+}
+
+interface TicketLine {
+  id: TicketLineId
+  productId: ProductId
+  productName: string
+  unitPrice: number
+  quantity: number
+  subtotal: number
+}
+
+interface Ticket {
+  id: TicketId
+  lines: TicketLine[]
+  status: 'open' | 'closed' | 'cancelled'
+  paymentMethod: PaymentMethodValue | null
+  closedAt: number | null
+  total: number
+}
+
+interface CurrentTicket {
+  id: TicketId
+  lines: TicketLine[]
+  status: 'open' | 'closed' | 'cancelled'
+  paymentMethod: PaymentMethodValue | null
+  closedAt: number | null
+  total: number
+}
 
 interface MioumState {
-  products: { id: string; name: string; price: number; stock: number }[]
-  tickets: { id: string }[]
-  currentTicket: { id: string; lines: { id: string; productId: string; quantity: number; price: number }[] } | null
+  products: Product[]
+  tickets: Ticket[]
+  currentTicket: CurrentTicket | null
 }
+
+type MioumDomainEvent = {
+  type: string
+  module: string
+  aggregateId: string | null
+  payload: unknown
+  occurredAt: string
+}
+
+type CreateProductPayload = { name: string; price: number; category: string }
+type UpdateProductPayload = { productId: ProductId; name: string; price: number; category: string }
+type DeleteProductPayload = { productId: ProductId }
+type AddLineToTicketPayload = { productId: ProductId; quantity: number }
+type RemoveLineFromTicketPayload = { lineId: TicketLineId }
+type DecrementLineQuantityPayload = { lineId: TicketLineId }
+type CloseTicketPayload = { paymentMethod: PaymentMethodValue }
+type CancelTicketPayload = Record<string, never>
+type ReopenTicketPayload = { ticketId: TicketId }
 
 /**
  * Handles commands for the Mioum module
@@ -29,32 +83,24 @@ export class MioumCommandHandler {
   /**
    * Execute a command and return the domain event
    */
-  execute(action: string, payload: unknown): unknown {
+  execute(action: string, payload: unknown): MioumDomainEvent {
     const state = this.#projection.rebuild() as MioumState
-
-    type CreateProductPayload = { name: string; price: number; stock: number }
-    type UpdateProductPayload = { productId: string; name?: string; price?: number; stock?: number }
-    type DeleteProductPayload = { productId: string }
-    type AddLineToTicketPayload = { productId: string; quantity: number }
-    type RemoveLineFromTicketPayload = { lineId: string }
-    type DecrementLineQuantityPayload = { lineId: string }
-    type CloseTicketPayload = { paymentMethod: string }
-    type CancelTicketPayload = {}
-    type ReopenTicketPayload = { ticketId: string }
 
     switch (action) {
       case 'CreateProduct':
         return new CreateProduct().execute(payload as CreateProductPayload)
 
       case 'UpdateProduct': {
-        const product = state.products.find((p) => p.id === (payload as UpdateProductPayload).productId)
-        if (!product) throw new Error(`Product not found: ${(payload as UpdateProductPayload).productId}`)
-        return new UpdateProduct().execute({ product, ...(payload as UpdateProductPayload) })
+        const p = payload as UpdateProductPayload
+        const product = state.products.find((pr) => pr.id === p.productId)
+        if (!product) throw new Error(`Product not found: ${p.productId}`)
+        return new UpdateProduct().execute({ product, name: p.name, price: p.price, category: p.category })
       }
 
       case 'DeleteProduct': {
-        const product = state.products.find((p) => p.id === (payload as DeleteProductPayload).productId)
-        if (!product) throw new Error(`Product not found: ${(payload as DeleteProductPayload).productId}`)
+        const p = payload as DeleteProductPayload
+        const product = state.products.find((pr) => pr.id === p.productId)
+        if (!product) throw new Error(`Product not found: ${p.productId}`)
         return new DeleteProduct().execute(payload as DeleteProductPayload)
       }
 
@@ -66,9 +112,9 @@ export class MioumCommandHandler {
       case 'AddLineToTicket': {
         const ticket = state.currentTicket
         if (!ticket) throw new Error('No open ticket')
-        const product = state.products.find((p) => p.id === (payload as AddLineToTicketPayload).productId)
-        if (!product) throw new Error(`Product not found: ${(payload as AddLineToTicketPayload).productId}`)
         const p = payload as AddLineToTicketPayload
+        const product = state.products.find((pr) => pr.id === p.productId)
+        if (!product) throw new Error(`Product not found: ${p.productId}`)
         return new AddLineToTicket().execute({ ticket, product, quantity: p.quantity })
       }
 
@@ -97,8 +143,9 @@ export class MioumCommandHandler {
       }
 
       case 'ReopenTicket': {
-        const ticket = state.tickets.find((t) => t.id === (payload as ReopenTicketPayload).ticketId)
-        if (!ticket) throw new Error(`Ticket not found: ${(payload as ReopenTicketPayload).ticketId}`)
+        const p = payload as ReopenTicketPayload
+        const ticket = state.tickets.find((t) => t.id === p.ticketId)
+        if (!ticket) throw new Error(`Ticket not found: ${p.ticketId}`)
         return new ReopenTicket().execute({ ticket })
       }
 

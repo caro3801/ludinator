@@ -1,5 +1,22 @@
+import { ScheduleRepository } from '../../ports/ScheduleRepository'
+import { VolunteerRepository } from '../../ports/VolunteerRepository'
+import { PostRepository } from '../../ports/PostRepository'
+import { Schedule } from '../../domain/model/Schedule'
+import { Volunteer } from '../../domain/model/Volunteer'
+import { Post } from '../../domain/model/Post'
+import { EditionId, SlotId } from '../../../shared/types'
+
+interface SlotInfo {
+  postName: string
+  window: { day: string, startTime: string, endTime: string }
+}
+
 export class CrewVolunteerPlanningView extends HTMLElement {
-  async refresh({ scheduleRepo, volunteerRepo, postRepo }, editionId) {
+  async refresh(
+    { scheduleRepo, volunteerRepo, postRepo }:
+      { scheduleRepo: ScheduleRepository, volunteerRepo: VolunteerRepository, postRepo: PostRepository },
+    editionId: EditionId
+  ): Promise<void> {
     const [schedule, volunteers, posts] = await Promise.all([
       scheduleRepo.findByEdition(editionId),
       volunteerRepo.findAll(),
@@ -11,18 +28,18 @@ export class CrewVolunteerPlanningView extends HTMLElement {
       return
     }
 
-    const slotMap = {}
-    for (const post of posts) {
+    const slotMap: Record<SlotId, SlotInfo> = {}
+    for (const post of posts as Post[]) {
       for (const slot of post.slots) {
-        slotMap[slot.id] = { postName: post.name.value, window: slot.window }
+        slotMap[slot.id] = { postName: post.name.value, window: { day: slot.window.day, startTime: slot.window.startTime, endTime: slot.window.endTime } }
       }
     }
 
-    this.innerHTML = volunteers.map(volunteer => {
+    this.innerHTML = (volunteers as Volunteer[]).map(volunteer => {
       const assignments = schedule.getAssignmentsForVolunteer(volunteer.id)
       const slots = assignments
         .map(a => slotMap[a.slotId])
-        .filter(Boolean)
+        .filter((s): s is SlotInfo => s !== undefined)
         .sort((a, b) =>
           a.window.day.localeCompare(b.window.day) ||
           a.window.startTime.localeCompare(b.window.startTime)

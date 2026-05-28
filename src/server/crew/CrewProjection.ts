@@ -1,17 +1,75 @@
 import { EventStore } from '../EventStore'
+import { VolunteerId, PostId, ScheduleId, SlotId, EditionId } from '../../shared/types'
+
+interface Volunteer {
+  id: VolunteerId
+  name: string
+}
+
+interface TimeWindow {
+  day: string
+  startTime: string
+  endTime: string
+}
+
+interface Slot {
+  id: SlotId
+  postId: PostId
+  window: TimeWindow
+}
+
+interface Post {
+  id: PostId
+  name: string
+  minVolunteers: number
+  slots: Slot[]
+}
+
+interface Assignment {
+  id: string
+  volunteerId: VolunteerId
+  slotId: SlotId
+}
+
+interface Schedule {
+  id: ScheduleId
+  editionId: EditionId
+  assignments: Assignment[]
+}
 
 interface CrewState {
-  volunteers: unknown[]
-  posts: unknown[]
-  schedule: unknown | null
+  volunteers: Volunteer[]
+  posts: Post[]
+  schedule: Schedule | null
 }
 
 const INITIAL_STATE: CrewState = { volunteers: [], posts: [], schedule: null }
 
-interface CrewEvent {
-  type: string
-  payload: unknown
-}
+// Event payload types for type-safe event handling
+type VolunteerCreatedEvent = { type: 'VolunteerCreated'; payload: Volunteer }
+type VolunteerNameUpdatedEvent = { type: 'VolunteerNameUpdated'; payload: Volunteer }
+type VolunteerDeletedEvent = { type: 'VolunteerDeleted'; payload: { volunteerId: VolunteerId } }
+type PostCreatedEvent = { type: 'PostCreated'; payload: Post }
+type PostNameUpdatedEvent = { type: 'PostNameUpdated'; payload: Post }
+type SlotAddedToPostEvent = { type: 'SlotAddedToPost'; payload: Post }
+type SlotUpdatedInPostEvent = { type: 'SlotUpdatedInPost'; payload: Post }
+type PostDeletedEvent = { type: 'PostDeleted'; payload: { postId: PostId } }
+type SlotRemovedFromPostEvent = { type: 'SlotRemovedFromPost'; payload: { post: Post; slotId: SlotId } }
+type VolunteerAssignedEvent = { type: 'VolunteerAssigned'; payload: Schedule }
+type VolunteerUnassignedEvent = { type: 'VolunteerUnassigned'; payload: Schedule }
+
+type CrewEvent =
+  | VolunteerCreatedEvent
+  | VolunteerNameUpdatedEvent
+  | VolunteerDeletedEvent
+  | PostCreatedEvent
+  | PostNameUpdatedEvent
+  | SlotAddedToPostEvent
+  | SlotUpdatedInPostEvent
+  | PostDeletedEvent
+  | SlotRemovedFromPostEvent
+  | VolunteerAssignedEvent
+  | VolunteerUnassignedEvent
 
 function applyEvent(state: CrewState, event: CrewEvent): CrewState {
   switch (event.type) {
@@ -21,8 +79,8 @@ function applyEvent(state: CrewState, event: CrewEvent): CrewState {
     case 'VolunteerNameUpdated':
       return {
         ...state,
-        volunteers: state.volunteers.map((v: { id: string }) =>
-          v.id === (event.payload as { id: string }).id ? event.payload : v
+        volunteers: state.volunteers.map((v) =>
+          v.id === event.payload.id ? event.payload : v
         ),
       }
 
@@ -30,13 +88,13 @@ function applyEvent(state: CrewState, event: CrewEvent): CrewState {
       return {
         ...state,
         volunteers: state.volunteers.filter(
-          (v: { id: string }) => v.id !== (event.payload as { volunteerId: string }).volunteerId
+          (v) => v.id !== event.payload.volunteerId
         ),
         schedule: state.schedule
           ? {
               ...state.schedule,
-              assignments: (state.schedule as { assignments: { volunteerId: string }[] }).assignments.filter(
-                (a: { volunteerId: string }) => a.volunteerId !== (event.payload as { volunteerId: string }).volunteerId
+              assignments: state.schedule.assignments.filter(
+                (a) => a.volunteerId !== event.payload.volunteerId
               ),
             }
           : null,
@@ -50,22 +108,22 @@ function applyEvent(state: CrewState, event: CrewEvent): CrewState {
     case 'SlotUpdatedInPost':
       return {
         ...state,
-        posts: state.posts.map((p: { id: string }) =>
-          p.id === (event.payload as { id: string }).id ? event.payload : p
+        posts: state.posts.map((p) =>
+          p.id === event.payload.id ? event.payload : p
         ),
       }
 
     case 'PostDeleted': {
-      const post = state.posts.find((p: { id: string }) => p.id === (event.payload as { postId: string }).postId) as { slots: { id: string }[] } | undefined
-      const slotIds = post ? post.slots.map((s: { id: string }) => s.id) : []
+      const post = state.posts.find((p) => p.id === event.payload.postId)
+      const slotIds = post ? post.slots.map((s) => s.id) : []
       return {
         ...state,
-        posts: state.posts.filter((p: { id: string }) => p.id !== (event.payload as { postId: string }).postId),
+        posts: state.posts.filter((p) => p.id !== event.payload.postId),
         schedule: state.schedule
           ? {
               ...state.schedule,
-              assignments: (state.schedule as { assignments: { slotId: string }[] }).assignments.filter(
-                (a: { slotId: string }) => !slotIds.includes(a.slotId)
+              assignments: state.schedule.assignments.filter(
+                (a) => !slotIds.includes(a.slotId)
               ),
             }
           : null,
@@ -75,14 +133,14 @@ function applyEvent(state: CrewState, event: CrewEvent): CrewState {
     case 'SlotRemovedFromPost':
       return {
         ...state,
-        posts: state.posts.map((p: { id: string }) =>
-          p.id === (event.payload as { post: { id: string } }).post.id ? event.payload : p
+        posts: state.posts.map((p) =>
+          p.id === event.payload.post.id ? event.payload.post : p
         ),
         schedule: state.schedule
           ? {
               ...state.schedule,
-              assignments: (state.schedule as { assignments: { slotId: string }[] }).assignments.filter(
-                (a: { slotId: string }) => a.slotId !== (event.payload as { slotId: string }).slotId
+              assignments: state.schedule.assignments.filter(
+                (a) => a.slotId !== event.payload.slotId
               ),
             }
           : null,
@@ -111,7 +169,11 @@ export class CrewProjection {
    * Rebuild the current state by replaying all events
    */
   rebuild(): CrewState {
-    const events = this.#store.replayModule('crew')
+    const replayedEvents = this.#store.replayModule('crew')
+    const events: CrewEvent[] = replayedEvents.map((e) => ({
+      type: e.type,
+      payload: e.payload,
+    })) as CrewEvent[]
     return events.reduce(applyEvent, { ...INITIAL_STATE })
   }
 }

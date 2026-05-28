@@ -39,7 +39,7 @@ describe('CrewProjection', () => {
 
     const state = new CrewProjection(store).rebuild()
     expect(state.volunteers).toHaveLength(0)
-    expect(state.schedule.assignments).toHaveLength(0)
+    expect(state.schedule!.assignments).toHaveLength(0)
   })
 
   it('adds post from PostCreated', () => {
@@ -66,7 +66,7 @@ describe('CrewProjection', () => {
 
     const state = new CrewProjection(store).rebuild()
     expect(state.posts).toHaveLength(0)
-    expect(state.schedule.assignments).toHaveLength(0)
+    expect(state.schedule!.assignments).toHaveLength(0)
   })
 
   it('tracks assignment in schedule from VolunteerAssigned', () => {
@@ -81,6 +81,6 @@ describe('CrewProjection', () => {
     store.append({ id: '1', module: 'crew', type: 'VolunteerAssigned', aggregateId: schedule.id, payload: schedule.toJSON(), occurredAt: new Date().toISOString() })
     const state = new CrewProjection(store).rebuild()
     expect(state.schedule).not.toBeNull()
-    expect(state.schedule.assignments).toHaveLength(1)
+    expect(state.schedule!.assignments).toHaveLength(1)
   })
 })

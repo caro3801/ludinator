@@ -1,9 +1,7 @@
 import { TicketRepository } from '../../ports/TicketRepository'
-import { Ticket } from '../../domain/model/Ticket'
+import { Ticket, TicketData } from '../../domain/model/Ticket'
 
 const KEY = 'mioum:tickets'
-
-type TicketStatus = 'open' | 'closed' | 'cancelled'
 
 /**
  * LocalStorage implementation of TicketRepository
@@ -27,7 +25,7 @@ export class LocalStorageTicketRepository implements TicketRepository {
     const data = this.#read()
     const raw = data[id]
     if (!raw || typeof raw !== 'object') return null
-    return Ticket.fromJSON(raw as { id: string; lines: unknown[]; status: TicketStatus; paymentMethod: unknown; closedAt: number | null })
+    return Ticket.fromJSON(raw as TicketData)
   }
 
   async findAll(): Promise<Ticket[]> {
@@ -35,18 +33,18 @@ export class LocalStorageTicketRepository implements TicketRepository {
     const values = Object.values(data)
     return values.map((t: unknown) => {
       if (t && typeof t === 'object') {
-        return Ticket.fromJSON(t as { id: string; lines: unknown[]; status: TicketStatus; paymentMethod: unknown; closedAt: number | null })
+        return Ticket.fromJSON(t as TicketData)
       }
       throw new Error('Invalid ticket data in storage')
     })
   }
 
-  async findByStatus(status: TicketStatus): Promise<Ticket[]> {
+  async findByStatus(status: 'open' | 'closed' | 'cancelled'): Promise<Ticket[]> {
     const data = this.#read()
     return Object.values(data)
       .map((t: unknown) => {
         if (t && typeof t === 'object') {
-          return Ticket.fromJSON(t as { id: string; lines: unknown[]; status: TicketStatus; paymentMethod: unknown; closedAt: number | null })
+          return Ticket.fromJSON(t as TicketData)
         }
         throw new Error('Invalid ticket data in storage')
       })

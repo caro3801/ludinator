@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { bucketBatches } from './bucketBatches'
 
-const makeAt = (h, m) => new Date(2024, 0, 1, h, m, 0).getTime()
+const makeAt = (h:number, m:number) => new Date(2024, 0, 1, h, m, 0).getTime()
 
 describe('bucketBatches', () => {
   it('returns empty array when no batches', () => {

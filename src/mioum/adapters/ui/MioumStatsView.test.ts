@@ -1,25 +1,39 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { MioumStatsView } from './MioumStatsView'
 import './MioumStatsView'
 
-const makeStats = (overrides = {}) => ({
+interface StatsBreakdown {
+  productName: string
+  quantity: number
+  revenue: number
+}
+
+interface SalesStats {
+  ticketCount: number
+  totalRevenue: number
+  averageTicket: number
+  breakdown: StatsBreakdown[]
+}
+
+const makeStats = (overrides: Partial<SalesStats> = {}): SalesStats => ({
   ticketCount: 3,
   totalRevenue: 15.5,
   averageTicket: 5.17,
   breakdown: [
-    { productId: '1', productName: 'Café', quantity: 5, revenue: 7.5 },
-    { productId: '2', productName: 'Eau', quantity: 3, revenue: 3 },
+    { productName: 'Café', quantity: 5, revenue: 7.5 },
+    { productName: 'Eau', quantity: 3, revenue: 3 },
   ],
   ...overrides,
 })
 
-const makeUseCase = (stats) => ({ execute: vi.fn().mockResolvedValue(stats) })
+const makeUseCase = (stats: SalesStats) => ({ execute: vi.fn().mockResolvedValue(stats) })
 
 describe('MioumStatsView', () => {
-  let el
+  let el: MioumStatsView
 
   beforeEach(() => {
-    el = document.createElement('mioum-stats-view')
+    el = document.createElement('mioum-stats-view') as MioumStatsView
     document.body.appendChild(el)
   })
 
@@ -47,7 +61,7 @@ describe('MioumStatsView', () => {
 
   it('renders a row per breakdown entry', async () => {
     await el.refresh(makeUseCase(makeStats()))
-    expect(el.querySelectorAll('tbody tr')).toHaveLength(2)
+    expect(el.querySelectorAll<HTMLTableRowElement>('tbody tr')).toHaveLength(2)
   })
 
   it('renders product name in breakdown', async () => {

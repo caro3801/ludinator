@@ -1,20 +1,35 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest'
+import { MioumProductList } from './MioumProductList'
 import './MioumProductList'
+import type { ProductRepository } from '../../ports/ProductRepository'
 
-const makeProduct = (name, price, category = 'Snacks') => ({
+interface ProductLike {
+  id: string
+  name: { value: string }
+  price: { value: number }
+  category: string
+}
+
+const makeProduct = (name: string, price: number, category: string = 'Snacks'): ProductLike => ({
   id: crypto.randomUUID(),
   name: { value: name },
   price: { value: price },
   category,
 })
-const repoWith = (products) => ({ findAll: async () => products })
+
+const repoWith = (products: ProductLike[]): ProductRepository => ({
+  findAll: async () => products,
+  findById: async () => null,
+  save: async () => {},
+  delete: async () => {},
+} as unknown as ProductRepository)
 
 describe('MioumProductList', () => {
-  let el
+  let el: MioumProductList
 
   beforeEach(() => {
-    el = document.createElement('mioum-product-list')
+    el = document.createElement('mioum-product-list') as MioumProductList
     document.body.appendChild(el)
   })
 
@@ -32,38 +47,38 @@ describe('MioumProductList', () => {
 
   it('renders an edit button per product', async () => {
     await el.refresh(repoWith([makeProduct('Café', 1.5)]))
-    expect(el.querySelector('button[data-action="edit-product"]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="edit-product"]')).not.toBeNull()
   })
 
   it('renders a delete button per product', async () => {
     await el.refresh(repoWith([makeProduct('Café', 1.5)]))
-    expect(el.querySelector('button[data-action="delete-product"]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="delete-product"]')).not.toBeNull()
   })
 
   it('edit button carries data-product-id, data-name, data-price, data-category', async () => {
     const product = makeProduct('Café', 1.5, 'Boissons')
     await el.refresh(repoWith([product]))
-    const btn = el.querySelector('button[data-action="edit-product"]')
-    expect(btn.dataset.productId).toBe(product.id)
-    expect(btn.dataset.name).toBe('Café')
-    expect(btn.dataset.price).toBe('1.5')
-    expect(btn.dataset.category).toBe('Boissons')
+    const btn = el.querySelector<HTMLButtonElement>('button[data-action="edit-product"]')
+    expect(btn?.dataset.productId).toBe(product.id)
+    expect(btn?.dataset.name).toBe('Café')
+    expect(btn?.dataset.price).toBe('1.5')
+    expect(btn?.dataset.category).toBe('Boissons')
   })
 
   it('delete button carries data-product-id', async () => {
     const product = makeProduct('Café', 1.5)
     await el.refresh(repoWith([product]))
-    const btn = el.querySelector('button[data-action="delete-product"]')
-    expect(btn.dataset.productId).toBe(product.id)
+    const btn = el.querySelector<HTMLButtonElement>('button[data-action="delete-product"]')
+    expect(btn?.dataset.productId).toBe(product.id)
   })
 
   it('dispatches product-edit-requested with productId, name, price as float and category', async () => {
     const product = makeProduct('Café', 1.5, 'Boissons')
     await el.refresh(repoWith([product]))
 
-    const events = []
-    el.addEventListener('product-edit-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="edit-product"]').click()
+    const events: { productId: string; name: string; price: number; category: string }[] = []
+    el.addEventListener('product-edit-requested', (e: Event) => events.push((e as CustomEvent<{ productId: string; name: string; price: number; category: string }>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="edit-product"]')?.click()
 
     expect(events[0].productId).toBe(product.id)
     expect(events[0].name).toBe('Café')
@@ -75,9 +90,9 @@ describe('MioumProductList', () => {
     const product = makeProduct('Café', 1.5)
     await el.refresh(repoWith([product]))
 
-    const events = []
-    el.addEventListener('product-delete-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="delete-product"]').click()
+    const events: { productId: string }[] = []
+    el.addEventListener('product-delete-requested', (e: Event) => events.push((e as CustomEvent<{ productId: string }>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="delete-product"]')?.click()
 
     expect(events[0].productId).toBe(product.id)
   })

@@ -27,10 +27,10 @@ describe('PaymentMethod', () => {
   })
 
   it('throws ValidationError for null', () => {
-    expect(() => new PaymentMethod(null)).toThrow(ValidationError)
+    expect(() => new PaymentMethod(null as unknown as string)).toThrow(ValidationError)
   })
 
   it('throws ValidationError for undefined', () => {
-    expect(() => new PaymentMethod(undefined)).toThrow(ValidationError)
+    expect(() => new PaymentMethod(undefined as unknown as string)).toThrow(ValidationError)
   })
 })

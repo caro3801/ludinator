@@ -1,7 +1,26 @@
+import { ActivityId, EntryId } from '../../shared/types'
+
+interface ActivityPayload {
+  id: ActivityId
+  name: string
+  location: string | null
+  slots: unknown[]
+}
+
+interface EntryLogPayload {
+  id: EntryId
+  editionId: string
+  subCounters: unknown[]
+}
+
 export class ActivityCreated {
-  constructor({ activity, occurredAt = new Date().toISOString() }) {
-    this.type = 'ActivityCreated'
-    this.module = 'fest'
+  readonly type = 'ActivityCreated'
+  readonly module = 'fest'
+  readonly aggregateId: ActivityId
+  readonly payload: ActivityPayload
+  readonly occurredAt: string
+
+  constructor({ activity, occurredAt = new Date().toISOString() }: { activity: ActivityPayload; occurredAt?: string }) {
     this.aggregateId = activity.id
     this.payload = activity
     this.occurredAt = occurredAt
@@ -9,9 +28,13 @@ export class ActivityCreated {
 }
 
 export class ActivityNameUpdated {
-  constructor({ activity, occurredAt = new Date().toISOString() }) {
-    this.type = 'ActivityNameUpdated'
-    this.module = 'fest'
+  readonly type = 'ActivityNameUpdated'
+  readonly module = 'fest'
+  readonly aggregateId: ActivityId
+  readonly payload: ActivityPayload
+  readonly occurredAt: string
+
+  constructor({ activity, occurredAt = new Date().toISOString() }: { activity: ActivityPayload; occurredAt?: string }) {
     this.aggregateId = activity.id
     this.payload = activity
     this.occurredAt = occurredAt
@@ -19,9 +42,13 @@ export class ActivityNameUpdated {
 }
 
 export class ActivityDeleted {
-  constructor({ activityId, occurredAt = new Date().toISOString() }) {
-    this.type = 'ActivityDeleted'
-    this.module = 'fest'
+  readonly type = 'ActivityDeleted'
+  readonly module = 'fest'
+  readonly aggregateId: ActivityId
+  readonly payload: { activityId: ActivityId }
+  readonly occurredAt: string
+
+  constructor({ activityId, occurredAt = new Date().toISOString() }: { activityId: ActivityId; occurredAt?: string }) {
     this.aggregateId = activityId
     this.payload = { activityId }
     this.occurredAt = occurredAt
@@ -29,9 +56,13 @@ export class ActivityDeleted {
 }
 
 export class SlotAddedToActivity {
-  constructor({ activity, occurredAt = new Date().toISOString() }) {
-    this.type = 'SlotAddedToActivity'
-    this.module = 'fest'
+  readonly type = 'SlotAddedToActivity'
+  readonly module = 'fest'
+  readonly aggregateId: ActivityId
+  readonly payload: ActivityPayload
+  readonly occurredAt: string
+
+  constructor({ activity, occurredAt = new Date().toISOString() }: { activity: ActivityPayload; occurredAt?: string }) {
     this.aggregateId = activity.id
     this.payload = activity
     this.occurredAt = occurredAt
@@ -39,9 +70,13 @@ export class SlotAddedToActivity {
 }
 
 export class RegistrationAdded {
-  constructor({ activity, occurredAt = new Date().toISOString() }) {
-    this.type = 'RegistrationAdded'
-    this.module = 'fest'
+  readonly type = 'RegistrationAdded'
+  readonly module = 'fest'
+  readonly aggregateId: ActivityId
+  readonly payload: ActivityPayload
+  readonly occurredAt: string
+
+  constructor({ activity, occurredAt = new Date().toISOString() }: { activity: ActivityPayload; occurredAt?: string }) {
     this.aggregateId = activity.id
     this.payload = activity
     this.occurredAt = occurredAt
@@ -49,9 +84,13 @@ export class RegistrationAdded {
 }
 
 export class RegistrationUpdated {
-  constructor({ activity, occurredAt = new Date().toISOString() }) {
-    this.type = 'RegistrationUpdated'
-    this.module = 'fest'
+  readonly type = 'RegistrationUpdated'
+  readonly module = 'fest'
+  readonly aggregateId: ActivityId
+  readonly payload: ActivityPayload
+  readonly occurredAt: string
+
+  constructor({ activity, occurredAt = new Date().toISOString() }: { activity: ActivityPayload; occurredAt?: string }) {
     this.aggregateId = activity.id
     this.payload = activity
     this.occurredAt = occurredAt
@@ -59,9 +98,13 @@ export class RegistrationUpdated {
 }
 
 export class RegistrationCancelled {
-  constructor({ activity, occurredAt = new Date().toISOString() }) {
-    this.type = 'RegistrationCancelled'
-    this.module = 'fest'
+  readonly type = 'RegistrationCancelled'
+  readonly module = 'fest'
+  readonly aggregateId: ActivityId
+  readonly payload: ActivityPayload
+  readonly occurredAt: string
+
+  constructor({ activity, occurredAt = new Date().toISOString() }: { activity: ActivityPayload; occurredAt?: string }) {
     this.aggregateId = activity.id
     this.payload = activity
     this.occurredAt = occurredAt
@@ -69,9 +112,13 @@ export class RegistrationCancelled {
 }
 
 export class SubCounterAdded {
-  constructor({ entryLog, occurredAt = new Date().toISOString() }) {
-    this.type = 'SubCounterAdded'
-    this.module = 'fest'
+  readonly type = 'SubCounterAdded'
+  readonly module = 'fest'
+  readonly aggregateId: EntryId
+  readonly payload: EntryLogPayload
+  readonly occurredAt: string
+
+  constructor({ entryLog, occurredAt = new Date().toISOString() }: { entryLog: EntryLogPayload; occurredAt?: string }) {
     this.aggregateId = entryLog.id
     this.payload = entryLog
     this.occurredAt = occurredAt
@@ -79,9 +126,13 @@ export class SubCounterAdded {
 }
 
 export class SubCounterRemoved {
-  constructor({ entryLog, occurredAt = new Date().toISOString() }) {
-    this.type = 'SubCounterRemoved'
-    this.module = 'fest'
+  readonly type = 'SubCounterRemoved'
+  readonly module = 'fest'
+  readonly aggregateId: EntryId
+  readonly payload: EntryLogPayload
+  readonly occurredAt: string
+
+  constructor({ entryLog, occurredAt = new Date().toISOString() }: { entryLog: EntryLogPayload; occurredAt?: string }) {
     this.aggregateId = entryLog.id
     this.payload = entryLog
     this.occurredAt = occurredAt
@@ -89,9 +140,13 @@ export class SubCounterRemoved {
 }
 
 export class EntriesRecorded {
-  constructor({ entryLog, occurredAt = new Date().toISOString() }) {
-    this.type = 'EntriesRecorded'
-    this.module = 'fest'
+  readonly type = 'EntriesRecorded'
+  readonly module = 'fest'
+  readonly aggregateId: EntryId
+  readonly payload: EntryLogPayload
+  readonly occurredAt: string
+
+  constructor({ entryLog, occurredAt = new Date().toISOString() }: { entryLog: EntryLogPayload; occurredAt?: string }) {
     this.aggregateId = entryLog.id
     this.payload = entryLog
     this.occurredAt = occurredAt
@@ -99,9 +154,13 @@ export class EntriesRecorded {
 }
 
 export class SubCounterBatchUpdated {
-  constructor({ entryLog, occurredAt = new Date().toISOString() }) {
-    this.type = 'SubCounterBatchUpdated'
-    this.module = 'fest'
+  readonly type = 'SubCounterBatchUpdated'
+  readonly module = 'fest'
+  readonly aggregateId: EntryId
+  readonly payload: EntryLogPayload
+  readonly occurredAt: string
+
+  constructor({ entryLog, occurredAt = new Date().toISOString() }: { entryLog: EntryLogPayload; occurredAt?: string }) {
     this.aggregateId = entryLog.id
     this.payload = entryLog
     this.occurredAt = occurredAt
@@ -109,9 +168,13 @@ export class SubCounterBatchUpdated {
 }
 
 export class SubCounterBatchDeleted {
-  constructor({ entryLog, occurredAt = new Date().toISOString() }) {
-    this.type = 'SubCounterBatchDeleted'
-    this.module = 'fest'
+  readonly type = 'SubCounterBatchDeleted'
+  readonly module = 'fest'
+  readonly aggregateId: EntryId
+  readonly payload: EntryLogPayload
+  readonly occurredAt: string
+
+  constructor({ entryLog, occurredAt = new Date().toISOString() }: { entryLog: EntryLogPayload; occurredAt?: string }) {
     this.aggregateId = entryLog.id
     this.payload = entryLog
     this.occurredAt = occurredAt

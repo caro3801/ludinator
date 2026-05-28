@@ -1,7 +1,11 @@
+import { VolunteerRepository } from '../../ports/VolunteerRepository'
+import { Volunteer } from '../../domain/model/Volunteer'
+import { VolunteerId } from '../../../shared/types'
+
 export class CrewVolunteerList extends HTMLElement {
   connectedCallback() {
-    this.addEventListener('click', e => {
-      const btn = e.target.closest('button[data-action]')
+    this.addEventListener('click', (e: Event) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>('button[data-action]')
       if (!btn) return
       const { action, volunteerId, name } = btn.dataset
       if (action === 'edit-volunteer-name') {
@@ -19,13 +23,13 @@ export class CrewVolunteerList extends HTMLElement {
     })
   }
 
-  async refresh(repo) {
+  async refresh(repo: VolunteerRepository): Promise<void> {
     const volunteers = await repo.findAll()
     if (volunteers.length === 0) {
       this.innerHTML = '<p class="text-muted">Aucun bénévole enregistré.</p>'
       return
     }
-    this.innerHTML = `<ul class="list-group">${volunteers.map(v => `
+    this.innerHTML = `<ul class="list-group">${(volunteers as Volunteer[]).map(v => `
       <li class="list-group-item d-flex align-items-center gap-2">
         <span>${v.name.value}</span>
         <button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-auto"

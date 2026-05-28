@@ -1,9 +1,9 @@
 export class FestActivityList extends HTMLElement {
   connectedCallback() {
-    this.addEventListener('click', e => {
-      const btn = e.target.closest('button[data-action]')
+    this.addEventListener('click', (e: Event) => {
+      const btn = (e.target as HTMLElement | null)?.closest('button[data-action]')
       if (!btn) return
-      const { action, activityId, slotId, name } = btn.dataset
+      const { action, activityId, slotId, name } = (btn as HTMLElement).dataset
       if (action === 'rename-activity') {
         this.dispatchEvent(new CustomEvent('activity-rename-requested', {
           detail: { activityId, name },
@@ -17,7 +17,7 @@ export class FestActivityList extends HTMLElement {
         }))
       }
       if (action === 'add-entry') {
-        const registrations = JSON.parse(decodeURIComponent(btn.dataset.registrations ?? '[]'))
+        const registrations = JSON.parse(decodeURIComponent((btn as HTMLElement).dataset.registrations ?? '[]'))
         this.dispatchEvent(new CustomEvent('add-entry-requested', {
           detail: { activityId, slotId, registrations },
           bubbles: true,
@@ -26,7 +26,7 @@ export class FestActivityList extends HTMLElement {
     })
   }
 
-  async refresh(repo) {
+  async refresh(repo: { findAll(): Promise<{ id: string; name: { value: string }; location: string | null; slots: { id: string; window: { day: string; startTime: string; endTime: string }; maxParticipants: number | null; isOverCapacity: boolean; registrationCount: number; registrations: { id: string; personName: string; waitlisted: boolean }[] }[] }[]> }): Promise<void> {
     const activities = await repo.findAll()
     if (!activities.length) {
       this.innerHTML = '<p class="text-muted">Aucune activité enregistrée.</p>'

@@ -6,6 +6,19 @@ import { Post } from '../../domain/model/Post'
 import { Schedule } from '../../domain/model/Schedule'
 import { TimeWindow } from '../../domain/model/TimeWindow'
 
+interface Assignment {
+  id: string
+  volunteerId: string
+  slotId: string
+}
+
+interface ScheduleJSON {
+  id: string
+  editionId: string
+  assignments: Assignment[]
+  conflicts?: { volunteerId: string, slotIdA: string, slotIdB: string }[]
+}
+
 describe('UnassignVolunteer', () => {
   it('emits VolunteerUnassigned with assignment removed', () => {
     const volunteer = Volunteer.create('Alice')
@@ -14,10 +27,10 @@ describe('UnassignVolunteer', () => {
     const slot = p.slots[0]
     const schedule = Schedule.create('edition-2024')
     schedule.assign(volunteer, slot)
-    const assignmentId = schedule.toJSON().assignments[0].id
+    const assignmentId = (schedule.toJSON() as ScheduleJSON).assignments[0].id
 
-    const event = new UnassignVolunteer().execute({ schedule: schedule.toJSON(), assignmentId })
+    const event = new UnassignVolunteer().execute({ schedule: schedule.toJSON() as ScheduleJSON, assignmentId })
     expect(event).toBeInstanceOf(VolunteerUnassigned)
-    expect(event.payload.assignments).toHaveLength(0)
+    expect((event.payload as ScheduleJSON).assignments).toHaveLength(0)
   })
 })

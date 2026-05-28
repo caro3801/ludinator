@@ -12,8 +12,8 @@ describe('LocalStorageActivityRepository', () => {
     const a = Activity.create('Escape Game', 'Salle A')
     await repo.save(a)
     const found = await repo.findById(a.id)
-    expect(found.name.value).toBe('Escape Game')
-    expect(found.location).toBe('Salle A')
+    expect(found?.name.value).toBe('Escape Game')
+    expect(found?.location).toBe('Salle A')
   })
 
   it('persists slots alongside the activity', async () => {
@@ -22,9 +22,9 @@ describe('LocalStorageActivityRepository', () => {
     a.addSlot(new TimeWindow('saturday', '10:00', '12:00'), { min: 5, max: 20 })
     await repo.save(a)
     const found = await repo.findById(a.id)
-    expect(found.slots).toHaveLength(1)
-    expect(found.slots[0].minParticipants).toBe(5)
-    expect(found.slots[0].maxParticipants).toBe(20)
+    expect(found?.slots).toHaveLength(1)
+    expect(found?.slots[0].minParticipants).toBe(5)
+    expect(found?.slots[0].maxParticipants).toBe(20)
   })
 
   it('persists registrations', async () => {
@@ -35,8 +35,8 @@ describe('LocalStorageActivityRepository', () => {
     slot.addRegistration('Bob')
     await repo.save(a)
     const found = await repo.findById(a.id)
-    expect(found.slots[0].registrations).toHaveLength(2)
-    expect(found.slots[0].registrations[0].personName).toBe('Alice')
+    expect(found?.slots[0].registrations).toHaveLength(2)
+    expect(found?.slots[0].registrations[0].personName).toBe('Alice')
   })
 
   it('returns null when activity is not found', async () => {
@@ -47,7 +47,7 @@ describe('LocalStorageActivityRepository', () => {
     const repo = new LocalStorageActivityRepository()
     await repo.save(Activity.create('Quiz'))
     await repo.save(Activity.create('Escape Game'))
-    expect(await repo.findAll()).toHaveLength(2)
+    expect((await repo.findAll()).length).toBe(2)
   })
 
   it('deletes an activity', async () => {

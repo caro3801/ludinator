@@ -1,9 +1,10 @@
 import { generateId } from '../shared/generateId'
+import { EventId } from '../shared/types'
 
 const QUEUE_KEY = 'ludinator:queue'
 
 interface QueueCommand {
-  id: string
+  id: EventId
   module: string
   action: string
   payload: unknown
@@ -16,7 +17,7 @@ interface StateMessage {
 }
 
 interface AckMessage {
-  id: string
+  id: EventId
   ok: boolean
   error?: string
 }
@@ -44,13 +45,19 @@ export class WsClient {
   readonly #url: string
   #ws: WebSocket | null = null
   #connected: boolean = false
-  #pendingAcks: Map<string, { resolve: () => void; reject: (err: Error) => void }> = new Map()
+  #pendingAcks: Map<EventId, { resolve: () => void; reject: (err: Error) => void }> = new Map()
+  #pendingResponses: Map<EventId, { resolve: (data: unknown) => void; reject: (err: Error) => void }> = new Map()
   #stateHandlers: Record<string, ((data: unknown) => void)[]> = {}
   #connectionHandlers: ((info: ConnectionInfo) => void)[] = []
   #retryDelay: number = 1000
+  #connectionPromise: Promise<void> | null = null
+  #connectionResolve: (() => void) | null = null
 
   constructor(url: string) {
     this.#url = url
+    this.#connectionPromise = new Promise((resolve) => {
+      this.#connectionResolve = resolve
+    })
     this.#connect()
   }
 
@@ -60,12 +67,17 @@ export class WsClient {
     this.#ws.onopen = () => {
       this.#connected = true
       this.#notifyConnection()
+      this.#connectionResolve?.()
+      this.#connectionResolve = null
       this.#flushQueue()
     }
 
     this.#ws.onclose = () => {
       this.#connected = false
       this.#notifyConnection()
+      this.#connectionPromise = new Promise((resolve) => {
+        this.#connectionResolve = resolve
+      })
       this.#scheduleReconnect()
     }
 
@@ -77,17 +89,34 @@ export class WsClient {
 
     this.#ws.onmessage = ({ data }: MessageEvent<string>) => {
       const msg: IncomingMessage = JSON.parse(data)
-      if (msg.type === 'state') {
+      if ('type' in msg && msg.type === 'state') {
         const handlers = this.#stateHandlers[msg.module] ?? []
         for (const h of handlers) h(msg.data)
         return
       }
       if ('id' in msg) {
         const ackMsg = msg as AckMessage
-        const callbacks = this.#pendingAcks.get(ackMsg.id)
-        this.#pendingAcks.delete(ackMsg.id)
-        if (!callbacks) return
-        ackMsg.ok ? callbacks.resolve() : callbacks.reject(new Error(ackMsg.error))
+        
+        // Gérer les ACK standard (ok/error)
+        const ackCallbacks = this.#pendingAcks.get(ackMsg.id)
+        if (ackCallbacks) {
+          this.#pendingAcks.delete(ackMsg.id)
+          ackMsg.ok ? ackCallbacks.resolve() : ackCallbacks.reject(new Error(ackMsg.error ?? 'Unknown error'))
+          return
+        }
+
+        if (ackMsg.ok !== undefined) {
+          const responseCallbacks = this.#pendingResponses.get(ackMsg.id)
+          if (responseCallbacks) {
+            this.#pendingResponses.delete(ackMsg.id)
+            if (ackMsg.ok) {
+              const { id, ok, ...responseData } = ackMsg as unknown as Record<string, unknown>
+              responseCallbacks.resolve(responseData)
+            } else {
+              responseCallbacks.reject(new Error(ackMsg.error ?? 'Unknown error'))
+            }
+          }
+        }
       }
     }
   }
@@ -123,25 +152,21 @@ export class WsClient {
     }
   }
 
-  #sendNow(cmd: QueueCommand): Promise<void> {
+  #sendNow(cmd: QueueCommand): Promise<unknown> {
     return new Promise((resolve, reject) => {
-      this.#pendingAcks.set(cmd.id, { resolve, reject })
+      this.#pendingResponses.set(cmd.id, { resolve, reject })
       if (this.#ws) {
         this.#ws.send(JSON.stringify(cmd))
       }
     })
   }
 
-  send(module: string, action: string, payload: unknown = {}): Promise<void> {
-    const cmd: QueueCommand = { id: generateId(), module, action, payload }
-    if (this.#connected) {
-      return this.#sendNow(cmd)
+  async send(module: string, action: string, payload: unknown = {}): Promise<unknown> {
+    if (!this.#connected) {
+      await this.#connectionPromise
     }
-    const queue = loadQueue()
-    queue.push(cmd)
-    saveQueue(queue)
-    this.#notifyConnection()
-    return Promise.resolve()
+    const cmd: QueueCommand = { id: generateId(), module, action, payload }
+    return this.#sendNow(cmd)
   }
 
   onState(module: string, callback: (data: unknown) => void): void {

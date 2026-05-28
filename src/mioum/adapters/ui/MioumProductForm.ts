@@ -1,9 +1,13 @@
+interface CreateProductUseCase {
+  execute(params: { name: string; price: number; category: string }): Promise<unknown>
+}
+
 export class MioumProductForm extends HTMLElement {
-  #createProductUseCase = null
+  #createProductUseCase: CreateProductUseCase | null = null
 
-  set createProductUseCase(uc) { this.#createProductUseCase = uc }
+  set createProductUseCase(uc: CreateProductUseCase) { this.#createProductUseCase = uc }
 
-  connectedCallback() {
+  connectedCallback(): void {
     this.innerHTML = `
       <form>
         <div class="mb-2">
@@ -18,20 +22,22 @@ export class MioumProductForm extends HTMLElement {
         <button type="submit" class="btn btn-sm btn-primary">Créer</button>
       </form>
     `
-    this.querySelector('form').addEventListener('submit', e => this.#onSubmit(e))
+    const form = this.querySelector('form')
+    if (form) form.addEventListener('submit', (e: Event) => this.#onSubmit(e as SubmitEvent))
   }
 
-  async #onSubmit(e) {
+  async #onSubmit(e: SubmitEvent): Promise<void> {
     e.preventDefault()
-    const name = this.querySelector('input[name="name"]').value.trim()
-    const category = this.querySelector('input[name="category"]').value.trim()
-    const price = parseFloat(this.querySelector('input[name="price"]').value)
+    const name = (this.querySelector<HTMLInputElement>('input[name="name"]'))?.value.trim() ?? ''
+    const category = (this.querySelector<HTMLInputElement>('input[name="category"]'))?.value.trim() ?? ''
+    const price = parseFloat((this.querySelector<HTMLInputElement>('input[name="price"]'))?.value ?? '0')
+    if (!this.#createProductUseCase) return
     try {
       const product = await this.#createProductUseCase.execute({ name, price, category })
       this.dispatchEvent(new CustomEvent('product-created', { detail: product, bubbles: true }))
-      e.target.reset()
+      ;(e.target as HTMLFormElement).reset()
     } catch (err) {
-      this.dispatchEvent(new CustomEvent('mioum-error', { detail: { message: err.message }, bubbles: true }))
+      this.dispatchEvent(new CustomEvent('mioum-error', { detail: { message: err instanceof Error ? err.message : String(err) }, bubbles: true }))
     }
   }
 }

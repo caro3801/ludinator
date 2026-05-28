@@ -1,16 +1,73 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest'
+import { MioumTicketView } from './MioumTicketView'
 import './MioumTicketView'
+import type { ProductRepository } from '../../ports/ProductRepository'
 
-const makeProduct = (name, price, category = 'Snacks') => ({
+interface TicketLine {
+  id: string
+  productId: string
+  productName: string
+  unitPrice: number
+  quantity: number
+  subtotal: number
+}
+
+interface TicketLike {
+  id: string
+  status: string
+  isOpen: boolean
+  lines: TicketLine[]
+  total: number
+}
+
+interface ProductLike {
+  id: string
+  name: { value: string }
+  price: { value: number }
+  category: string
+}
+
+interface LineAddRequestedDetail {
+  ticketId: string
+  productId: string
+  quantity: number
+}
+
+interface LineRemoveRequestedDetail {
+  ticketId: string
+  lineId: string
+}
+
+interface LineDecrementRequestedDetail {
+  ticketId: string
+  lineId: string
+}
+
+interface TicketCloseRequestedDetail {
+  ticketId: string
+  paymentMethod: string
+}
+
+interface TicketCancelRequestedDetail {
+  ticketId: string
+}
+
+const makeProduct = (name: string, price: number, category: string = 'Snacks'): ProductLike => ({
   id: crypto.randomUUID(),
   name: { value: name },
   price: { value: price },
   category,
 })
-const repoWith = (products) => ({ findAll: async () => products })
 
-const makeLine = (productName, unitPrice, quantity) => ({
+const repoWith = (products: ProductLike[]): ProductRepository => ({
+  findAll: async () => products,
+  findById: async () => null,
+  save: async () => {},
+  delete: async () => {},
+} as unknown as ProductRepository)
+
+const makeLine = (productName: string, unitPrice: number, quantity: number): TicketLine => ({
   id: crypto.randomUUID(),
   productId: crypto.randomUUID(),
   productName,
@@ -19,7 +76,7 @@ const makeLine = (productName, unitPrice, quantity) => ({
   subtotal: unitPrice * quantity,
 })
 
-const makeTicket = (status = 'open', lines = []) => ({
+const makeTicket = (status: string = 'open', lines: TicketLine[] = []): TicketLike => ({
   id: crypto.randomUUID(),
   status,
   lines,
@@ -28,10 +85,10 @@ const makeTicket = (status = 'open', lines = []) => ({
 })
 
 describe('MioumTicketView', () => {
-  let el
+  let el: MioumTicketView
 
   beforeEach(() => {
-    el = document.createElement('mioum-ticket-view')
+    el = document.createElement('mioum-ticket-view') as MioumTicketView
     document.body.appendChild(el)
   })
 
@@ -53,11 +110,11 @@ describe('MioumTicketView', () => {
     const product = makeProduct('Café', 1.5)
     const ticket = makeTicket('open', [])
     await el.refresh(ticket, repoWith([product]))
-    const btn = el.querySelector('button[data-action="add-product"]')
+    const btn = el.querySelector<HTMLButtonElement>('button[data-action="add-product"]')
     expect(btn).not.toBeNull()
-    expect(btn.dataset.productId).toBe(product.id)
-    expect(btn.textContent).toContain('Café')
-    expect(btn.textContent).toContain('1.50')
+    expect(btn?.dataset.productId).toBe(product.id)
+    expect(btn?.textContent).toContain('Café')
+    expect(btn?.textContent).toContain('1.50')
   })
 
   it('shows empty catalog message when no products', async () => {
@@ -71,34 +128,34 @@ describe('MioumTicketView', () => {
   //   const line = makeLine('Café', 1.5, 1)
   //   const ticket = makeTicket('open', [line])
   //   await el.refresh(ticket, repoWith([]))
-  //   const btn = el.querySelector('button[data-action="remove-line"]')
+  //   const btn = el.querySelector<HTMLButtonElement>('button[data-action="remove-line"]')
   //   expect(btn).not.toBeNull()
-  //   expect(btn.dataset.ticketId).toBe(ticket.id)
-  //   expect(btn.dataset.lineId).toBe(line.id)
+  //   expect(btn?.dataset.ticketId).toBe(ticket.id)
+  //   expect(btn?.dataset.lineId).toBe(line.id)
   // })
 
   it('renders close-cash button with data-ticket-id', async () => {
     const ticket = makeTicket('open', [makeLine('Café', 1.5, 1)])
     await el.refresh(ticket, repoWith([]))
-    const btn = el.querySelector('button[data-action="close-cash"]')
+    const btn = el.querySelector<HTMLButtonElement>('button[data-action="close-cash"]')
     expect(btn).not.toBeNull()
-    expect(btn.dataset.ticketId).toBe(ticket.id)
+    expect(btn?.dataset.ticketId).toBe(ticket.id)
   })
 
   it('renders close-card button with data-ticket-id', async () => {
     const ticket = makeTicket('open', [makeLine('Café', 1.5, 1)])
     await el.refresh(ticket, repoWith([]))
-    const btn = el.querySelector('button[data-action="close-card"]')
+    const btn = el.querySelector<HTMLButtonElement>('button[data-action="close-card"]')
     expect(btn).not.toBeNull()
-    expect(btn.dataset.ticketId).toBe(ticket.id)
+    expect(btn?.dataset.ticketId).toBe(ticket.id)
   })
 
   it('renders cancel button with data-ticket-id', async () => {
     const ticket = makeTicket('open', [])
     await el.refresh(ticket, repoWith([]))
-    const btn = el.querySelector('button[data-action="cancel-ticket"]')
+    const btn = el.querySelector<HTMLButtonElement>('button[data-action="cancel-ticket"]')
     expect(btn).not.toBeNull()
-    expect(btn.dataset.ticketId).toBe(ticket.id)
+    expect(btn?.dataset.ticketId).toBe(ticket.id)
   })
 
   it('dispatches line-add-requested with quantity 1 when product button clicked', async () => {
@@ -106,9 +163,9 @@ describe('MioumTicketView', () => {
     const ticket = makeTicket('open', [])
     await el.refresh(ticket, repoWith([product]))
 
-    const events = []
-    el.addEventListener('line-add-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="add-product"]').click()
+    const events: LineAddRequestedDetail[] = []
+    el.addEventListener('line-add-requested', (e: Event) => events.push((e as CustomEvent<LineAddRequestedDetail>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="add-product"]')?.click()
 
     expect(events[0].ticketId).toBe(ticket.id)
     expect(events[0].productId).toBe(product.id)
@@ -121,9 +178,9 @@ describe('MioumTicketView', () => {
   //   const ticket = makeTicket('open', [line])
   //   await el.refresh(ticket, repoWith([]))
   //
-  //   const events = []
-  //   el.addEventListener('line-remove-requested', e => events.push(e.detail))
-  //   el.querySelector('button[data-action="remove-line"]').click()
+  //   const events: LineRemoveRequestedDetail[] = []
+  //   el.addEventListener('line-remove-requested', (e: Event) => events.push((e as CustomEvent<LineRemoveRequestedDetail>).detail))
+  //   el.querySelector<HTMLButtonElement>('button[data-action="remove-line"]')?.click()
   //
   //   expect(events[0].ticketId).toBe(ticket.id)
   //   expect(events[0].lineId).toBe(line.id)
@@ -133,9 +190,9 @@ describe('MioumTicketView', () => {
     const ticket = makeTicket('open', [makeLine('Café', 1.5, 1)])
     await el.refresh(ticket, repoWith([]))
 
-    const events = []
-    el.addEventListener('ticket-close-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="close-cash"]').click()
+    const events: TicketCloseRequestedDetail[] = []
+    el.addEventListener('ticket-close-requested', (e: Event) => events.push((e as CustomEvent<TicketCloseRequestedDetail>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="close-cash"]')?.click()
 
     expect(events[0].ticketId).toBe(ticket.id)
     expect(events[0].paymentMethod).toBe('cash')
@@ -145,9 +202,9 @@ describe('MioumTicketView', () => {
     const ticket = makeTicket('open', [makeLine('Café', 1.5, 1)])
     await el.refresh(ticket, repoWith([]))
 
-    const events = []
-    el.addEventListener('ticket-close-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="close-card"]').click()
+    const events: TicketCloseRequestedDetail[] = []
+    el.addEventListener('ticket-close-requested', (e: Event) => events.push((e as CustomEvent<TicketCloseRequestedDetail>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="close-card"]')?.click()
 
     expect(events[0].ticketId).toBe(ticket.id)
     expect(events[0].paymentMethod).toBe('card')
@@ -157,9 +214,9 @@ describe('MioumTicketView', () => {
     const ticket = makeTicket('open', [])
     await el.refresh(ticket, repoWith([]))
 
-    const events = []
-    el.addEventListener('ticket-cancel-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="cancel-ticket"]').click()
+    const events: TicketCancelRequestedDetail[] = []
+    el.addEventListener('ticket-cancel-requested', (e: Event) => events.push((e as CustomEvent<TicketCancelRequestedDetail>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="cancel-ticket"]')?.click()
 
     expect(events[0].ticketId).toBe(ticket.id)
   })
@@ -169,9 +226,9 @@ describe('MioumTicketView', () => {
     const ticket = makeTicket('open', [line])
     await el.refresh(ticket, repoWith([]))
 
-    const events = []
-    el.addEventListener('line-decrement-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="decrement-line"]').click()
+    const events: LineDecrementRequestedDetail[] = []
+    el.addEventListener('line-decrement-requested', (e: Event) => events.push((e as CustomEvent<LineDecrementRequestedDetail>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="decrement-line"]')?.click()
 
     expect(events[0].ticketId).toBe(ticket.id)
     expect(events[0].lineId).toBe(line.id)
@@ -182,9 +239,9 @@ describe('MioumTicketView', () => {
     const ticket = makeTicket('open', [line])
     await el.refresh(ticket, repoWith([]))
 
-    const events = []
-    el.addEventListener('line-add-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="increment-line"]').click()
+    const events: LineAddRequestedDetail[] = []
+    el.addEventListener('line-add-requested', (e: Event) => events.push((e as CustomEvent<LineAddRequestedDetail>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="increment-line"]')?.click()
 
     expect(events[0].ticketId).toBe(ticket.id)
     expect(events[0].productId).toBe(line.productId)
@@ -197,17 +254,17 @@ describe('MioumTicketView', () => {
     await el.refresh(ticket, repoWith([]))
     expect(el.textContent).toContain('Café')
     expect(el.textContent).toContain('3')
-    expect(el.querySelector('button[data-action="close-cash"]')).toBeNull()
-    expect(el.querySelector('button[data-action="close-card"]')).toBeNull()
-    expect(el.querySelector('button[data-action="cancel-ticket"]')).toBeNull()
-    expect(el.querySelector('[data-status]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="close-cash"]')).toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="close-card"]')).toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="cancel-ticket"]')).toBeNull()
+    expect(el.querySelector<HTMLElement>('[data-status]')).not.toBeNull()
   })
 
   it('shows cancelled ticket as read-only with status badge', async () => {
     const ticket = makeTicket('cancelled', [])
     await el.refresh(ticket, repoWith([]))
-    expect(el.querySelector('button[data-action="close-cash"]')).toBeNull()
-    expect(el.querySelector('[data-status]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="close-cash"]')).toBeNull()
+    expect(el.querySelector<HTMLElement>('[data-status]')).not.toBeNull()
   })
 
   it('groups products by category with a category header', async () => {

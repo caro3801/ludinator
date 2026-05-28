@@ -6,6 +6,6 @@ describe('DeleteActivity', () => {
   it('emits ActivityDeleted with correct activityId', () => {
     const event = new DeleteActivity().execute({ activityId: 'a-1' })
     expect(event).toBeInstanceOf(ActivityDeleted)
-    expect(event.payload.activityId).toBe('a-1')
+    expect((event.payload as { activityId: string }).activityId).toBe('a-1')
   })
 })

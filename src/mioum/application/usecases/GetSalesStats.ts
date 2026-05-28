@@ -1,19 +1,44 @@
-export class GetSalesStats {
-  #ticketRepo
+import { TicketRepository } from '../../ports/TicketRepository'
+import { ProductId, TicketId, TicketLineId } from '../../../shared/types'
 
-  constructor(ticketRepository) {
+interface ClosedTicket {
+  id: TicketId
+  lines: { id: TicketLineId, productId: ProductId, productName: string, unitPrice: number, quantity: number, subtotal: number }[]
+  status: 'closed'
+  paymentMethod: string | null
+  closedAt: number
+  total: number
+}
+
+interface SalesBreakdownEntry {
+  productId: ProductId
+  productName: string
+  quantity: number
+  revenue: number
+}
+
+interface SalesStats {
+  ticketCount: number
+  totalRevenue: number
+  averageTicket: number
+  breakdown: SalesBreakdownEntry[]
+}
+
+export class GetSalesStats {
+  #ticketRepo: TicketRepository
+
+  constructor(ticketRepository: TicketRepository) {
     this.#ticketRepo = ticketRepository
   }
 
-  async execute() {
+  async execute(): Promise<SalesStats> {
     const closedTickets = await this.#ticketRepo.findByStatus('closed')
 
     const ticketCount = closedTickets.length
     const totalRevenue = closedTickets.reduce((sum, t) => sum + t.total, 0)
-    const averageTicket = ticketCount > 0 ? totalRevenue / ticketCount : 0
 
-    const breakdownMap = new Map()
-    for (const ticket of closedTickets) {
+    const breakdownMap: Map<ProductId, SalesBreakdownEntry> = new Map()
+    for (const ticket of closedTickets as ClosedTicket[]) {
       for (const line of ticket.lines) {
         const existing = breakdownMap.get(line.productId)
         if (existing) {

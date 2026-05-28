@@ -1,15 +1,27 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest'
+import { CrewVolunteerList } from './CrewVolunteerList'
 import './CrewVolunteerList'
+import type { VolunteerRepository } from '../../ports/VolunteerRepository'
 
-const makeVolunteer = (name) => ({ id: crypto.randomUUID(), name: { value: name } })
-const repoWith = (volunteers) => ({ findAll: async () => volunteers })
+interface VolunteerJSON {
+  id: string
+  name: { value: string }
+}
+
+const makeVolunteer = (name: string): VolunteerJSON => ({ id: crypto.randomUUID(), name: { value: name } })
+const repoWith = (volunteers: VolunteerJSON[]): VolunteerRepository => ({
+  findAll: async () => volunteers,
+  save: async () => {},
+  findById: async () => null,
+  delete: async () => {},
+} as unknown as VolunteerRepository)
 
 describe('CrewVolunteerList', () => {
-  let el
+  let el: CrewVolunteerList
 
   beforeEach(() => {
-    el = document.createElement('crew-volunteer-list')
+    el = document.createElement('crew-volunteer-list') as CrewVolunteerList
     document.body.appendChild(el)
   })
 
@@ -20,28 +32,28 @@ describe('CrewVolunteerList', () => {
 
   it('renders a list item for each volunteer', async () => {
     await el.refresh(repoWith([makeVolunteer('Alice'), makeVolunteer('Bob')]))
-    expect(el.querySelectorAll('li')).toHaveLength(2)
+    expect(el.querySelectorAll<HTMLLIElement>('li')).toHaveLength(2)
     expect(el.textContent).toContain('Alice')
     expect(el.textContent).toContain('Bob')
   })
 
   it('renders an edit button per volunteer', async () => {
     await el.refresh(repoWith([makeVolunteer('Alice')]))
-    expect(el.querySelector('button[data-action="edit-volunteer-name"]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="edit-volunteer-name"]')).not.toBeNull()
   })
 
   it('renders a delete button per volunteer', async () => {
     await el.refresh(repoWith([makeVolunteer('Alice')]))
-    expect(el.querySelector('button[data-action="delete-volunteer"]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="delete-volunteer"]')).not.toBeNull()
   })
 
   it('dispatches volunteer-edit-name-requested with volunteerId and name', async () => {
     const volunteer = makeVolunteer('Alice')
     await el.refresh(repoWith([volunteer]))
 
-    const events = []
-    el.addEventListener('volunteer-edit-name-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="edit-volunteer-name"]').click()
+    const events: { volunteerId: string, name: string }[] = []
+    el.addEventListener('volunteer-edit-name-requested', (e: Event) => events.push((e as CustomEvent<{ volunteerId: string, name: string }>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="edit-volunteer-name"]')?.click()
 
     expect(events[0].volunteerId).toBe(volunteer.id)
     expect(events[0].name).toBe('Alice')
@@ -51,9 +63,9 @@ describe('CrewVolunteerList', () => {
     const volunteer = makeVolunteer('Alice')
     await el.refresh(repoWith([volunteer]))
 
-    const events = []
-    el.addEventListener('volunteer-delete-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="delete-volunteer"]').click()
+    const events: { volunteerId: string }[] = []
+    el.addEventListener('volunteer-delete-requested', (e: Event) => events.push((e as CustomEvent<{ volunteerId: string }>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="delete-volunteer"]')?.click()
 
     expect(events[0].volunteerId).toBe(volunteer.id)
   })
@@ -61,7 +73,7 @@ describe('CrewVolunteerList', () => {
   it('replaces the list on subsequent refresh calls', async () => {
     await el.refresh(repoWith([makeVolunteer('Alice')]))
     await el.refresh(repoWith([makeVolunteer('Bob'), makeVolunteer('Carol')]))
-    expect(el.querySelectorAll('li')).toHaveLength(2)
+    expect(el.querySelectorAll<HTMLLIElement>('li')).toHaveLength(2)
     expect(el.textContent).not.toContain('Alice')
   })
 })

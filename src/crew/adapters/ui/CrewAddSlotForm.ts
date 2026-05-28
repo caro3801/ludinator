@@ -1,10 +1,30 @@
+interface UseCase<T, R> {
+  execute(params: T): Promise<R>
+}
+
+interface Post {
+  id: string
+  name: { value: string }
+}
+
+interface AddSlotParams {
+  postId: string
+  day: string
+  startTime: string
+  endTime: string
+}
+
+interface Slot {
+  id: string
+}
+
 export class CrewAddSlotForm extends HTMLElement {
-  #useCase = null
-  #posts = []
+  #useCase: UseCase<AddSlotParams, Slot> | null = null
+  #posts: Post[] = []
 
-  set addSlotToPostUseCase(uc) { this.#useCase = uc }
+  set addSlotToPostUseCase(uc: UseCase<AddSlotParams, Slot> | null) { this.#useCase = uc }
 
-  set posts(posts) {
+  set posts(posts: Post[]) {
     this.#posts = posts
     this.#render()
   }
@@ -25,21 +45,37 @@ export class CrewAddSlotForm extends HTMLElement {
         <button type="submit">Ajouter le créneau</button>
       </form>
     `
-    this.querySelector('form').addEventListener('submit', e => this.#onSubmit(e))
+    const form = this.querySelector('form')
+    if (form) {
+      form.addEventListener('submit', (e: Event) => this.#onSubmit(e))
+    }
   }
 
-  async #onSubmit(e) {
+  async #onSubmit(e: Event) {
     e.preventDefault()
-    const postId = this.querySelector('[name="postId"]').value
-    const day = this.querySelector('[name="day"]').value.trim()
-    const startTime = this.querySelector('[name="startTime"]').value
-    const endTime = this.querySelector('[name="endTime"]').value
+    const postSelect = this.querySelector<HTMLSelectElement>('[name="postId"]')
+    const dayInput = this.querySelector<HTMLInputElement>('[name="day"]')
+    const startTimeInput = this.querySelector<HTMLInputElement>('[name="startTime"]')
+    const endTimeInput = this.querySelector<HTMLInputElement>('[name="endTime"]')
+    
+    if (!postSelect || !dayInput || !startTimeInput || !endTimeInput) return
+    
+    const postId = postSelect.value
+    const day = dayInput.value.trim()
+    const startTime = startTimeInput.value
+    const endTime = endTimeInput.value
+    
+    if (!this.#useCase) return
+    
     try {
       const slot = await this.#useCase.execute({ postId, day, startTime, endTime })
-      this.dispatchEvent(new CustomEvent('slot-added', { detail: slot, bubbles: true }))
-      e.target.reset()
+      this.dispatchEvent(new CustomEvent<Slot>('slot-added', { detail: slot, bubbles: true }))
+      if (e.target instanceof HTMLFormElement) {
+        e.target.reset()
+      }
     } catch (err) {
-      this.dispatchEvent(new CustomEvent('crew-error', { detail: { message: err.message }, bubbles: true }))
+      const error = err as Error
+      this.dispatchEvent(new CustomEvent<{ message: string }>('crew-error', { detail: { message: error.message }, bubbles: true }))
     }
   }
 }

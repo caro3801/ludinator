@@ -1,8 +1,25 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest'
+import { MioumHistoryView } from './MioumHistoryView'
 import './MioumHistoryView'
+import type { TicketRepository } from '../../ports/TicketRepository'
 
-const makeTicket = (status, closedAt = null, lines = [], paymentMethod = null) => ({
+interface TicketLine {
+  unitPrice: number
+  quantity: number
+}
+
+interface TicketLike {
+  id: string
+  status: string
+  lines: TicketLine[]
+  total: number
+  isOpen: boolean
+  paymentMethod: string | null
+  closedAt: number | null
+}
+
+const makeTicket = (status: string, closedAt: number | null = null, lines: TicketLine[] = [], paymentMethod: string | null = null): TicketLike => ({
   id: crypto.randomUUID(),
   status,
   lines,
@@ -12,13 +29,18 @@ const makeTicket = (status, closedAt = null, lines = [], paymentMethod = null) =
   closedAt,
 })
 
-const repoWith = (tickets) => ({ findAll: async () => tickets })
+const repoWith = (tickets: TicketLike[]): TicketRepository => ({
+  findAll: async () => tickets,
+  save: async () => {},
+  delete: async () => {},
+  findById: async () => null,
+} as unknown as TicketRepository)
 
 describe('MioumHistoryView', () => {
-  let el
+  let el: MioumHistoryView
 
   beforeEach(() => {
-    el = document.createElement('mioum-history-view')
+    el = document.createElement('mioum-history-view') as MioumHistoryView
     document.body.appendChild(el)
   })
 
@@ -43,25 +65,25 @@ describe('MioumHistoryView', () => {
   it('shows closed ticket with Rouvrir button carrying data-ticket-id', async () => {
     const t = makeTicket('closed', Date.now())
     await el.refresh(repoWith([t]))
-    const btn = el.querySelector('button[data-action="reopen-ticket"]')
+    const btn = el.querySelector<HTMLButtonElement>('button[data-action="reopen-ticket"]')
     expect(btn).not.toBeNull()
-    expect(btn.dataset.ticketId).toBe(t.id)
+    expect(btn?.dataset.ticketId).toBe(t.id)
   })
 
   it('shows cancelled ticket with Annulé badge and no Rouvrir button', async () => {
     const t = makeTicket('cancelled')
     await el.refresh(repoWith([t]))
     expect(el.textContent).toContain('Annulé')
-    expect(el.querySelector('button[data-action="reopen-ticket"]')).toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="reopen-ticket"]')).toBeNull()
   })
 
   it('dispatches ticket-reopen-requested with ticketId on Rouvrir click', async () => {
     const t = makeTicket('closed', Date.now())
     await el.refresh(repoWith([t]))
 
-    const events = []
-    el.addEventListener('ticket-reopen-requested', e => events.push(e.detail))
-    el.querySelector('button[data-action="reopen-ticket"]').click()
+    const events: { ticketId: string }[] = []
+    el.addEventListener('ticket-reopen-requested', (e: Event) => events.push((e as CustomEvent<{ ticketId: string }>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="reopen-ticket"]')?.click()
 
     expect(events[0].ticketId).toBe(t.id)
   })
@@ -70,7 +92,7 @@ describe('MioumHistoryView', () => {
     const older = makeTicket('closed', 1000)
     const newer = makeTicket('closed', 2000)
     await el.refresh(repoWith([older, newer]))
-    const btns = el.querySelectorAll('button[data-action="reopen-ticket"]')
+    const btns = el.querySelectorAll<HTMLButtonElement>('button[data-action="reopen-ticket"]')
     expect(btns[0].dataset.ticketId).toBe(newer.id)
   })
 

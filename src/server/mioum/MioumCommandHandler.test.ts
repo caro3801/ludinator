@@ -4,7 +4,9 @@ import { MioumProjection } from './MioumProjection'
 import { EventStore } from '../EventStore'
 
 describe('MioumCommandHandler', () => {
-  let store, projection, handler
+  let store: EventStore
+  let projection: MioumProjection
+  let handler: MioumCommandHandler
 
   beforeEach(() => {
     store = new EventStore(':memory:')
@@ -15,7 +17,7 @@ describe('MioumCommandHandler', () => {
   it('CreateProduct returns ProductCreated event', () => {
     const event = handler.execute('CreateProduct', { name: 'Bière', price: 3.5, category: 'Boissons' })
     expect(event.type).toBe('ProductCreated')
-    expect(event.payload.name).toBe('Bière')
+    expect((event.payload as { name: string }).name).toBe('Bière')
   })
 
   it('DeleteProduct throws when product not found', () => {
@@ -30,20 +32,20 @@ describe('MioumCommandHandler', () => {
 
   it('full flow: create product, open ticket, add line', () => {
     const created = handler.execute('CreateProduct', { name: 'Bière', price: 3.0, category: 'Boissons' })
-    store.append({ ...created, id: '1' })
+    store.append({ ...created, id: '1', occurredAt: new Date().toISOString() })
 
     const opened = handler.execute('OpenTicket', {})
-    store.append({ ...opened, id: '2' })
+    store.append({ ...opened, id: '2', occurredAt: new Date().toISOString() })
 
-    const productId = projection.rebuild().products[0].id
+    const state = projection.rebuild()
+    const productId = state.products[0].id
 
     const lineAdded = handler.execute('AddLineToTicket', { productId, quantity: 2 })
     expect(lineAdded.type).toBe('LineAddedToTicket')
-    expect(lineAdded.payload.total).toBe(6.0)
+    expect((lineAdded.payload as { total: number }).total).toBe(6.0)
   })
 
   it('throws on unknown action', () => {
-    expect(() => handler.execute('UnknownAction', {}))
-      .toThrow('Unknown action')
+    expect(() => handler.execute('UnknownAction', {})).toThrow('Unknown action')
   })
 })

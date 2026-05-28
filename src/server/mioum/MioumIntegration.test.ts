@@ -1,29 +1,34 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { EventStore } from '../EventStore'
 import { CommandDispatcher } from '../CommandDispatcher'
+import { ServerWebSocket, Server } from 'bun'
 
 describe('Mioum integration', () => {
-  let store, dispatcher, server, ws1, ws2
+  let store: EventStore
+  let dispatcher: CommandDispatcher
+  let server: Server<unknown>
+  let ws1: WebSocket
+  let ws2: WebSocket
 
   beforeAll(async () => {
     store = new EventStore(':memory:')
     dispatcher = new CommandDispatcher(store)
-    const clients = new Set()
+    const clients = new Set<ServerWebSocket<unknown>>()
 
-    server = Bun.serve({
+    server = Bun.serve<unknown>({
       port: 0,
-      fetch(req, srv) { if (srv.upgrade(req)) return },
+      fetch(req: globalThis.Request, server: any) { if (server.upgrade(req)) return },
       websocket: {
-        async open(ws) {
+        async open(ws: ServerWebSocket<unknown>) {
           clients.add(ws)
           const snapshots = dispatcher.snapshots()
           for (const { module, data } of snapshots)
             ws.send(JSON.stringify({ type: 'state', module, data }))
         },
-        async message(ws, raw) {
+        async message(ws: ServerWebSocket<unknown>, raw: string) {
           await dispatcher.handle(ws, JSON.parse(raw), clients)
         },
-        close(ws) { clients.delete(ws) },
+        close(ws: ServerWebSocket<unknown>) { clients.delete(ws) },
       },
     })
 
@@ -44,9 +49,9 @@ describe('Mioum integration', () => {
 
   it('sends initial snapshot on connection', async () => {
     const ws3 = new WebSocket(`ws://localhost:${server.port}`)
-    const snapshot = await new Promise(resolve => {
+    const snapshot = await new Promise<{ products: unknown[], tickets: unknown[] }>(resolve => {
       ws3.onmessage = ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'mioum') resolve(msg.data)
       }
     })
@@ -56,16 +61,16 @@ describe('Mioum integration', () => {
   })
 
   it('creates a product and broadcasts state to all clients', async () => {
-    const statePromise1 = new Promise(resolve => {
+    const statePromise1 = new Promise<{ products: { name: string }[] }>(resolve => {
       ws1.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'mioum' && msg.data.products.length > 0)
           resolve(msg.data)
       })
     })
-    const statePromise2 = new Promise(resolve => {
+    const statePromise2 = new Promise<{ products: { name: string }[] }>(resolve => {
       ws2.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'mioum' && msg.data.products.length > 0)
           resolve(msg.data)
       })
@@ -79,11 +84,12 @@ describe('Mioum integration', () => {
   })
 
   it('opens a ticket and adds a line', async () => {
-    const productId = dispatcher.snapshots().find(s => s.module === 'mioum').data.products[0].id
+    const state = dispatcher.snapshots().find(s => s.module === 'mioum')!.data as { products: { id: string }[] }
+    const productId = state.products[0].id
 
-    const ticketStatePromise = new Promise(resolve => {
+    const ticketStatePromise = new Promise<{ currentTicket: unknown }>(resolve => {
       ws1.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'mioum' && msg.data.currentTicket)
           resolve(msg.data)
       })
@@ -91,9 +97,9 @@ describe('Mioum integration', () => {
     ws1.send(JSON.stringify({ id: 'cmd-2', module: 'mioum', action: 'OpenTicket', payload: {} }))
     await ticketStatePromise
 
-    const lineStatePromise = new Promise(resolve => {
+    const lineStatePromise = new Promise<{ currentTicket: { lines: unknown[], total: number } }>(resolve => {
       ws1.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.type === 'state' && msg.module === 'mioum' && msg.data.currentTicket?.lines?.length > 0)
           resolve(msg.data)
       })
@@ -106,9 +112,9 @@ describe('Mioum integration', () => {
   })
 
   it('validation error sends ok:false ack', async () => {
-    const ackPromise = new Promise(resolve => {
+    const ackPromise = new Promise<{ ok: boolean, error?: string }>(resolve => {
       ws1.addEventListener('message', ({ data }) => {
-        const msg = JSON.parse(data)
+        const msg = JSON.parse(data as string)
         if (msg.id === 'cmd-err') resolve(msg)
       })
     })

@@ -4,7 +4,9 @@ import { CrewProjection } from './CrewProjection'
 import { EventStore } from '../EventStore'
 
 describe('CrewCommandHandler', () => {
-  let store, projection, handler
+  let store: EventStore
+  let projection: CrewProjection
+  let handler: CrewCommandHandler
 
   beforeEach(() => {
     store = new EventStore(':memory:')
@@ -15,7 +17,7 @@ describe('CrewCommandHandler', () => {
   it('CreateVolunteer returns VolunteerCreated', () => {
     const event = handler.execute('CreateVolunteer', { name: 'Alice' })
     expect(event.type).toBe('VolunteerCreated')
-    expect(event.payload.name).toBe('Alice')
+    expect((event.payload as { name: string }).name).toBe('Alice')
   })
 
   it('UpdateVolunteerName throws when volunteer not found', () => {
@@ -26,7 +28,7 @@ describe('CrewCommandHandler', () => {
   it('CreatePost returns PostCreated', () => {
     const event = handler.execute('CreatePost', { name: 'Accueil', minVolunteers: 2 })
     expect(event.type).toBe('PostCreated')
-    expect(event.payload.name).toBe('Accueil')
+    expect((event.payload as { name: string }).name).toBe('Accueil')
   })
 
   it('AddSlotToPost throws when post not found', () => {
@@ -41,7 +43,7 @@ describe('CrewCommandHandler', () => {
 
   it('AssignVolunteer throws when slot not found', () => {
     const created = handler.execute('CreateVolunteer', { name: 'Alice' })
-    store.append({ ...created, id: '1' })
+    store.append({ ...created, id: '1', occurredAt: new Date().toISOString() })
     const volunteerId = projection.rebuild().volunteers[0].id
     expect(() => handler.execute('AssignVolunteer', { volunteerId, slotId: 'unknown' }))
       .toThrow('Slot not found')
@@ -49,16 +51,17 @@ describe('CrewCommandHandler', () => {
 
   it('full flow: create post, add slot, create volunteer, assign', () => {
     const postEvent = handler.execute('CreatePost', { name: 'Accueil', minVolunteers: 2 })
-    store.append({ ...postEvent, id: '1' })
+    store.append({ ...postEvent, id: '1', occurredAt: new Date().toISOString() })
 
+    const state1 = projection.rebuild()
     const slotEvent = handler.execute('AddSlotToPost', {
-      postId: projection.rebuild().posts[0].id,
+      postId: state1.posts[0].id,
       day: 'samedi', startTime: '09:00', endTime: '12:00',
     })
-    store.append({ ...slotEvent, id: '2' })
+    store.append({ ...slotEvent, id: '2', occurredAt: new Date().toISOString() })
 
     const volEvent = handler.execute('CreateVolunteer', { name: 'Alice' })
-    store.append({ ...volEvent, id: '3' })
+    store.append({ ...volEvent, id: '3', occurredAt: new Date().toISOString() })
 
     const state = projection.rebuild()
     const volunteerId = state.volunteers[0].id
@@ -66,7 +69,7 @@ describe('CrewCommandHandler', () => {
 
     const assignEvent = handler.execute('AssignVolunteer', { volunteerId, slotId })
     expect(assignEvent.type).toBe('VolunteerAssigned')
-    expect(assignEvent.payload.assignments).toHaveLength(1)
+    expect((assignEvent.payload as { assignments: unknown[] }).assignments).toHaveLength(1)
   })
 
   it('throws on unknown action', () => {

@@ -5,7 +5,7 @@ import { Post } from './Post'
 import { TimeWindow } from './TimeWindow'
 
 describe('Schedule', () => {
-  let schedule, alice, bob, accueil
+  let schedule: Schedule, alice: Volunteer, bob: Volunteer, accueil: Post
 
   beforeEach(() => {
     schedule = Schedule.create('edition-2024')
