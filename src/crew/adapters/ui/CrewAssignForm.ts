@@ -28,6 +28,7 @@ export class CrewAssignForm extends HTMLElement {
   #volunteers: Volunteer[] = []
   #posts: Post[] = []
   #editionId: string | null = null
+  #formData: { volunteerId: string; postId: string; slotId: string } = { volunteerId: '', postId: '', slotId: '' }
 
   set assignVolunteerUseCase(uc: UseCase<AssignmentParams, Assignment> | null) { this.#useCase = uc }
   set editionId(id: string | null) { this.#editionId = id }
@@ -35,14 +36,46 @@ export class CrewAssignForm extends HTMLElement {
   set volunteers(list: Volunteer[]) {
     this.#volunteers = list
     this.#render()
+    this.#restoreFormData()
   }
 
   set posts(list: Post[]) {
     this.#posts = list
     this.#render()
+    this.#restoreFormData()
   }
 
   connectedCallback() { this.#render() }
+
+  #saveFormData(): void {
+    const volunteerSelect = this.querySelector<HTMLSelectElement>('[name="volunteerId"]')
+    const postSelect = this.querySelector<HTMLSelectElement>('[name="postId"]')
+    const slotSelect = this.querySelector<HTMLSelectElement>('[name="slotId"]')
+    
+    if (volunteerSelect && postSelect && slotSelect) {
+      this.#formData = {
+        volunteerId: volunteerSelect.value,
+        postId: postSelect.value,
+        slotId: slotSelect.value,
+      }
+    }
+  }
+
+  #restoreFormData(): void {
+    const volunteerSelect = this.querySelector<HTMLSelectElement>('[name="volunteerId"]')
+    const postSelect = this.querySelector<HTMLSelectElement>('[name="postId"]')
+    const slotSelect = this.querySelector<HTMLSelectElement>('[name="slotId"]')
+    
+    if (volunteerSelect && postSelect && slotSelect) {
+      volunteerSelect.value = this.#formData.volunteerId
+      postSelect.value = this.#formData.postId
+      slotSelect.value = this.#formData.slotId
+      // Recharger les slots pour le post sélectionné
+      if (this.#formData.postId) {
+        postSelect.dispatchEvent(new Event('change'))
+      }
+    }
+  }
 
   #render() {
     const firstPost = this.#posts[0]
@@ -58,6 +91,7 @@ export class CrewAssignForm extends HTMLElement {
           ${this.#slotsFor(firstPost?.id)}
         </select>
         <button type="submit">Affecter</button>
+        <button type="reset" class="btn btn-outline-secondary ms-2">Effacer</button>
       </form>
     `
     const postSelect = this.querySelector<HTMLSelectElement>('select[name="postId"]')
@@ -108,6 +142,9 @@ export class CrewAssignForm extends HTMLElement {
     const slotId = slotSelect.value
     
     if (!this.#useCase) return
+    
+    // Sauvegarder les données du formulaire avant soumission
+    this.#saveFormData()
     
     try {
       await this.#useCase.execute({ volunteerId, slotId, editionId: this.#editionId })

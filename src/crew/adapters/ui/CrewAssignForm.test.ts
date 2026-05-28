@@ -49,6 +49,28 @@ describe('CrewAssignForm', () => {
     expect(el.querySelector<HTMLSelectElement>('select[name="volunteerId"]')).not.toBeNull()
     expect(el.querySelector<HTMLSelectElement>('select[name="postId"]')).not.toBeNull()
     expect(el.querySelector<HTMLSelectElement>('select[name="slotId"]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[type="reset"]')).not.toBeNull()
+  })
+
+  it('does not reset the form automatically after successful submission', async () => {
+    const useCase = makeUseCase({ id: 'a-1' })
+    el.assignVolunteerUseCase = useCase
+
+    const volunteerSelect = el.querySelector<HTMLSelectElement>('select[name="volunteerId"]')
+    const postSelect = el.querySelector<HTMLSelectElement>('select[name="postId"]')
+    const slotSelect = el.querySelector<HTMLSelectElement>('select[name="slotId"]')
+    
+    volunteerSelect!.value = 'v-1'
+    postSelect!.value = 'p-1'
+    slotSelect!.value = 's-1'
+
+    el.querySelector('form')?.dispatchEvent(new Event('submit'))
+
+    await vi.waitFor(() => {
+      expect(volunteerSelect!.value).toBe('v-1')
+      expect(postSelect!.value).toBe('p-1')
+      expect(slotSelect!.value).toBe('s-1')
+    })
   })
 
   it('populates volunteers in their selector', () => {
@@ -99,6 +121,11 @@ describe('CrewAssignForm', () => {
 
     const events: unknown[] = []
     el.addEventListener('volunteer-assigned', (e: Event) => events.push((e as CustomEvent).detail))
+
+    const volunteerSelect = el.querySelector<HTMLSelectElement>('select[name="volunteerId"]')
+    const slotSelect = el.querySelector<HTMLSelectElement>('select[name="slotId"]')
+    volunteerSelect!.value = 'v-1'
+    slotSelect!.value = 's-1'
 
     el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
     await vi.waitFor(() => expect(events[0]).toEqual({ volunteerId: 'v-1', slotId: 's-1' }))
