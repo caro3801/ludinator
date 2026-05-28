@@ -21,7 +21,12 @@ export class Post {
   get id() { return this.#id }
   get name(): PostName { return this.#name }
   get minVolunteers(): number { return this.#minVolunteers }
-  get slots(): TimeSlot[] { return [...this.#slots] }
+  get slots(): TimeSlot[] {
+    return [...this.#slots].sort((a, b) =>
+      a.window.day.localeCompare(b.window.day) ||
+      a.window.startTime.localeCompare(b.window.startTime)
+    )
+  }
 
   updateName(rawName: string): void {
     this.#name = new PostName(rawName)
@@ -49,7 +54,7 @@ export class Post {
       id: this.#id,
       name: this.#name.value,
       minVolunteers: this.#minVolunteers,
-      slots: this.#slots.map(s => s.toJSON()),
+      slots: this.slots.map(s => s.toJSON()),
     }
   }
 
