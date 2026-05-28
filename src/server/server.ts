@@ -24,14 +24,26 @@ const dbPath = process.env.RAILWAY_VOLUME_MOUNT_PATH
   : 'ludinator.db'
 
 // Log et vérification du chemin de la DB
-import { existsSync } from 'node:fs'
+import { existsSync, accessSync, constants } from 'node:fs'
 import { dirname } from 'node:path'
 
 const dbDir = dirname(dbPath)
 console.log(`[DB] Attempting path: ${dbPath}`)
 console.log(`[DB] Directory exists: ${existsSync(dbDir)}`)
 
-const finalDbPath = existsSync(dbDir) ? dbPath : 'ludinator.db'
+let finalDbPath = dbPath
+if (!existsSync(dbDir)) {
+  finalDbPath = 'ludinator.db'
+  console.log(`[DB] Directory does not exist, falling back to: ${finalDbPath}`)
+} else {
+  try {
+    accessSync(dbDir, constants.R_OK | constants.W_OK)
+    console.log(`[DB] Directory has read/write permissions`)
+  } catch (err) {
+    finalDbPath = 'ludinator.db'
+    console.log(`[DB] No read/write permissions on ${dbDir}, falling back to: ${finalDbPath}`)
+  }
+}
 console.log(`[DB] Final path: ${finalDbPath}`)
 
 // Initialiser EventStore avec la base partagée
