@@ -77,8 +77,11 @@ export class CrewEditSlotForm extends HTMLElement {
     const startTime = startTimeInput.value
     const endTime = endTimeInput.value
     try {
-      const slot = await this.#useCase.execute({ postId: this.#postId, slotId: this.#slotId, day, startTime, endTime })
-      this.dispatchEvent(new CustomEvent<Slot>('slot-updated', { detail: slot, bubbles: true }))
+      await this.#useCase.execute({ postId: this.#postId, slotId: this.#slotId, day, startTime, endTime })
+      this.dispatchEvent(new CustomEvent('slot-updated', {
+        detail: { postId: this.#postId, slotId: this.#slotId, day, startTime, endTime },
+        bubbles: true
+      }))
       this.#close()
     } catch (err) {
       const error = err as Error

@@ -74,14 +74,13 @@ describe('CrewAddSlotForm', () => {
   })
 
   it('dispatches slot-added on success', async () => {
-    interface Slot { id: string }
-    const slot: Slot = { id: 'slot-1' }
-    const useCase = makeUseCase<{ postId: string, day: string, startTime: string, endTime: string }, Slot>(slot)
+    interface SlotAddedDetail { postId: string; day: string; startTime: string; endTime: string }
+    const useCase = makeUseCase<{ postId: string, day: string, startTime: string, endTime: string }, { id: string }>({ id: 'slot-1' })
     el.addSlotToPostUseCase = useCase
 
-    const events: Slot[] = []
+    const events: SlotAddedDetail[] = []
     el.addEventListener('slot-added', ((e: Event) => {
-      const customEvent = e as CustomEvent<Slot>
+      const customEvent = e as CustomEvent<SlotAddedDetail>
       events.push(customEvent.detail)
     }) as EventListener)
 
@@ -96,7 +95,7 @@ describe('CrewAddSlotForm', () => {
     endTimeInput.value = '12:00'
     el.querySelector('form')?.dispatchEvent(new Event('submit'))
 
-    await vi.waitFor(() => expect(events[0]).toBe(slot))
+    await vi.waitFor(() => expect(events[0]).toEqual({ postId: 'post-1', day: 'saturday', startTime: '09:00', endTime: '12:00' }))
   })
 
   it('dispatches crew-error on failure', async () => {

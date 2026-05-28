@@ -68,8 +68,11 @@ export class CrewAddSlotForm extends HTMLElement {
     if (!this.#useCase) return
     
     try {
-      const slot = await this.#useCase.execute({ postId, day, startTime, endTime })
-      this.dispatchEvent(new CustomEvent<Slot>('slot-added', { detail: slot, bubbles: true }))
+      await this.#useCase.execute({ postId, day, startTime, endTime })
+      this.dispatchEvent(new CustomEvent('slot-added', {
+        detail: { postId, day, startTime, endTime },
+        bubbles: true
+      }))
       if (e.target instanceof HTMLFormElement) {
         e.target.reset()
       }
