@@ -1,4 +1,4 @@
-FROM oven/bun:latest
+FROM oven/bun:1
 
 WORKDIR /app
 
@@ -16,9 +16,6 @@ COPY index.html fest.html mioum.html admin.html favicon.svg ./
 
 # Build frontend
 RUN bun run build
-
-# Remove devDependencies for production (optional, reduces image size)
-RUN bun pm prune --production
 
 # Create data directory for SQLite
 RUN mkdir -p /data
