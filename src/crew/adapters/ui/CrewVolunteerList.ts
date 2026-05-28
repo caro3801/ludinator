@@ -24,7 +24,7 @@ export class CrewVolunteerList extends HTMLElement {
   }
 
   async refresh(repo: VolunteerRepository): Promise<void> {
-    const volunteers = await repo.findAll()
+    const volunteers = (await repo.findAll()).sort((a, b) => a.name.value.localeCompare(b.name.value))
     if (volunteers.length === 0) {
       this.innerHTML = '<p class="text-muted">Aucun bénévole enregistré.</p>'
       return
