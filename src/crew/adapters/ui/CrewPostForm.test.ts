@@ -22,6 +22,24 @@ describe('CrewPostForm', () => {
     expect(el.querySelector<HTMLInputElement>('input[name="name"]')).not.toBeNull()
     expect(el.querySelector<HTMLInputElement>('input[name="minVolunteers"]')).not.toBeNull()
     expect(el.querySelector<HTMLButtonElement>('button[type="submit"]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[type="reset"]')).not.toBeNull()
+  })
+
+  it('does not reset the form automatically after successful submission', async () => {
+    const useCase = makeUseCase({ id: '1' })
+    el.createPostUseCase = useCase
+
+    const nameInput = el.querySelector<HTMLInputElement>('input[name="name"]')
+    const minInput = el.querySelector<HTMLInputElement>('input[name="minVolunteers"]')
+    nameInput!.value = 'Accueil'
+    minInput!.value = '2'
+
+    el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
+
+    await vi.waitFor(() => {
+      expect(nameInput!.value).toBe('Accueil')
+      expect(minInput!.value).toBe('2')
+    })
   })
 
   it('calls the use case with name and minVolunteers on submit', async () => {
