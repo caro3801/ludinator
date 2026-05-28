@@ -25,5 +25,8 @@ jobs:
       - name: Type-check
         run: bun run type-check
 
-      - name: Run all tests
-        run: bun run test:all
+      - name: Run npm tests
+        run: npm test
+
+      - name: Run bun tests
+        run: bun test
