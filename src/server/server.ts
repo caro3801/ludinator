@@ -23,12 +23,23 @@ const dbPath = process.env.RAILWAY_VOLUME_MOUNT_PATH
   ? `${process.env.RAILWAY_VOLUME_MOUNT_PATH}/ludinator.db`
   : 'ludinator.db'
 
+// Log et vérification du chemin de la DB
+import { existsSync } from 'node:fs'
+import { dirname } from 'node:path'
+
+const dbDir = dirname(dbPath)
+console.log(`[DB] Attempting path: ${dbPath}`)
+console.log(`[DB] Directory exists: ${existsSync(dbDir)}`)
+
+const finalDbPath = existsSync(dbDir) ? dbPath : 'ludinator.db'
+console.log(`[DB] Final path: ${finalDbPath}`)
+
 // Initialiser EventStore avec la base partagée
-const eventStore = new EventStore(dbPath)
+const eventStore = new EventStore(finalDbPath)
 // Note: EventStore crée sa propre instance de Database, donc on ne peut pas la partager directement
 // Solution: modifier EventStore pour accepter une Database en paramètre OU créer une nouvelle connexion
 // Pour l'instant, créons une nouvelle connexion pour admin
-const adminDb = new Database(dbPath)
+const adminDb = new Database(finalDbPath)
 
 const dispatcher = new CommandDispatcher(eventStore)
 const clients: Set<ServerWebSocket<unknown>> = new Set()
