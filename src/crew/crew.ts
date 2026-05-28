@@ -191,7 +191,7 @@ ws.onState('crew', (data: unknown) => {
   }
 
   if (statsView) {
-    statsView.refresh({ scheduleRepo, volunteerRepo }, EDITION_ID)
+    statsView.refresh({ scheduleRepo, volunteerRepo, postRepo }, EDITION_ID)
   }
 })
 
