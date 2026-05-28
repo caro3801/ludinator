@@ -23,7 +23,8 @@ dev:
 	kill $$BUN_PID 2>/dev/null
 
 test:
-	npx vitest run
+	npm test
+	bun test
 
 test-watch:
 	npx vitest
