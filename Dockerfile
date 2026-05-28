@@ -15,16 +15,18 @@ RUN bun install
 RUN mkdir -p /data && chown appuser:appuser /data
 
 # Copy app files
-COPY --chown=appuser:appuser src/ ./src/
-COPY --chown=appuser:appuser tsconfig.json tsconfig.node.json ./
-COPY --chown=appuser:appuser vite.config.ts ./
-COPY --chown=appuser:appuser index.html fest.html mioum.html admin.html favicon.svg ./
+COPY src/ ./src/
+COPY tsconfig.json tsconfig.node.json ./
+COPY vite.config.ts ./
+COPY index.html fest.html mioum.html admin.html favicon.svg ./
 
-# Build frontend (now builds all HTML entry points)
-USER appuser
+# Build frontend as root (Vite creates temp files)
 RUN bun run build
 
-# Runtime user
+# Change ownership of /app to appuser (except node_modules which can stay root)
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user for runtime
 USER appuser
 
 # Railway sets PORT, we use it via process.env.PORT
