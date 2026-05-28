@@ -173,7 +173,7 @@ class InMemoryScheduleRepo implements ScheduleRepository {
 // Handle state updates from WebSocket
 ws.onState('crew', (data: unknown) => {
   const { volunteers, posts, schedule } = data as { volunteers: unknown[]; posts: unknown[]; schedule: unknown | null }
-  const domainVolunteers = volunteers.map((v: unknown) => Volunteer.fromJSON(v as { id: string; name: string }))
+  const domainVolunteers = (volunteers || []).filter(Boolean).map((v: unknown) => Volunteer.fromJSON(v as { id: string; name: string }))
   const domainPosts = posts.map((p: unknown) => Post.fromJSON(p as { id: string; name: string; minVolunteers: number; slots: { id: string; postId: string; window: { day: string; startTime: string; endTime: string } }[] }))
   const domainSchedule = schedule ? Schedule.fromJSON(schedule as { id: string; editionId: string; assignments: unknown[] }) : null
 

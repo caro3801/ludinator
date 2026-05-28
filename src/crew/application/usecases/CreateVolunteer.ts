@@ -23,7 +23,7 @@ export class CreateVolunteer {
   async execute({ name }: CreateVolunteerParams): Promise<VolunteerCreated> {
     const existingVolunteers = await this.#volunteerRepo.findAll()
     const nameLower = name.toLowerCase()
-    const exists = existingVolunteers.some(v => v.name.value.toLowerCase() === nameLower)
+    const exists = existingVolunteers.some(v => v?.name?.value?.toLowerCase() === nameLower)
     if (exists) {
       throw new VolunteerAlreadyExistsError(name)
     }
