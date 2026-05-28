@@ -95,14 +95,13 @@ describe('CrewAssignForm', () => {
   })
 
   it('dispatches volunteer-assigned on success', async () => {
-    const assignment = { id: 'a-1' }
-    el.assignVolunteerUseCase = makeUseCase(assignment)
+    el.assignVolunteerUseCase = makeUseCase({ id: 'a-1' })
 
     const events: unknown[] = []
     el.addEventListener('volunteer-assigned', (e: Event) => events.push((e as CustomEvent).detail))
 
     el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
-    await vi.waitFor(() => expect(events[0]).toBe(assignment))
+    await vi.waitFor(() => expect(events[0]).toEqual({ volunteerId: 'v-1', slotId: 's-1' }))
   })
 
   it('dispatches crew-error on conflict', async () => {

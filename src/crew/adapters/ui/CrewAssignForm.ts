@@ -110,8 +110,11 @@ export class CrewAssignForm extends HTMLElement {
     if (!this.#useCase) return
     
     try {
-      const assignment = await this.#useCase.execute({ volunteerId, slotId, editionId: this.#editionId })
-      this.dispatchEvent(new CustomEvent<Assignment>('volunteer-assigned', { detail: assignment, bubbles: true }))
+      await this.#useCase.execute({ volunteerId, slotId, editionId: this.#editionId })
+      this.dispatchEvent(new CustomEvent('volunteer-assigned', {
+        detail: { volunteerId, slotId },
+        bubbles: true
+      }))
     } catch (err) {
       const error = err as Error
       this.dispatchEvent(new CustomEvent<{ message: string }>('crew-error', { detail: { message: error.message }, bubbles: true }))

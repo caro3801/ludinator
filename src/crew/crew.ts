@@ -214,7 +214,7 @@ interface SlotUpdatedDetail { postId: string; slotId: string; day: string; start
 interface SlotEditRequestedDetail { postId: string; slot: unknown }
 interface SlotDeleteRequestedDetail { postId: string; slotId: string }
 interface AssignSlotRequestedDetail { slotId: string; postId: string }
-interface VolunteerAssignedDetail { volunteer: unknown; slot: unknown; schedule: unknown; editionId: string }
+interface VolunteerAssignedDetail { volunteerId: string; slotId: string }
 interface AssignmentDeleteRequestedDetail { assignmentId: string }
 
 document.addEventListener('volunteer-created', (e) => {
