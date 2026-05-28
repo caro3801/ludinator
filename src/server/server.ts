@@ -67,8 +67,9 @@ const server = Bun.serve<unknown>({
     // Check if this is a WebSocket upgrade request
     const upgradeHeader = req.headers.get('upgrade')
     const isWebSocketUpgrade = upgradeHeader?.toLowerCase() === 'websocket'
+    const url = new URL(req.url)
     
-    if (isWebSocketUpgrade && server.upgrade(req, { data: undefined })) {
+    if (isWebSocketUpgrade && url.pathname === '/ws' && server.upgrade(req, { data: undefined })) {
       return undefined
     }
     

@@ -17,7 +17,7 @@ type ActivityJSON = { id: string; name: string; location: string | null; slots: 
 
 const EDITION_ID = 'edition-2024'
 const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-const ws = new WsClient(`${wsProtocol}//${window.location.host}`)
+const ws = new WsClient(`${wsProtocol}//${window.location.host}/ws`)
 
 const activityForm = document.querySelector<HTMLElement & { createActivityUseCase: unknown }>('fest-activity-form')
 const activityList = document.querySelector<HTMLElement & { refresh: (repo: unknown) => Promise<void> }>('fest-activity-list')
