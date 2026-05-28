@@ -49,14 +49,18 @@ describe('CrewVolunteerForm', () => {
     expect(events[0]).toBe(volunteer)
   })
 
-  it('resets the form after successful submission', async () => {
+  it('renders a clear button', () => {
+    expect(el.querySelector<HTMLButtonElement>('button[type="reset"]')).not.toBeNull()
+  })
+
+  it('does not reset the form automatically after successful submission', async () => {
     el.createVolunteerUseCase = makeUseCase<Volunteer>({ id: '1', name: { value: 'Alice' } })
     const input = el.querySelector<HTMLInputElement>('input[name="name"]')
     input!.value = 'Alice'
 
     el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
 
-    await vi.waitFor(() => expect(input!.value).toBe(''))
+    await vi.waitFor(() => expect(input!.value).toBe('Alice'))
   })
 
   it('dispatches crew-error event when use case fails', async () => {
