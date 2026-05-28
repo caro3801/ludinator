@@ -102,7 +102,7 @@ ws.onState('fest', (data: unknown) => {
     activityList.refresh({ findAll: () => Promise.resolve(domainActivities) })
   }
   if (addSlotForm) {
-    addSlotForm.activities = domainActivities.map((a) => a.toJSON())
+    addSlotForm.activities = domainActivities.map((a) => ({ id: a.id, name: { value: a.name.value } }))
   }
   if (programmeView) {
     programmeView.refresh({ findAll: () => Promise.resolve(domainActivities) })
