@@ -18,7 +18,7 @@ interface DomainEventBase {
 }
 
 interface ModuleHandler {
-  execute(action: string, payload: unknown): DomainEventBase
+  execute(action: string, payload: unknown): DomainEventBase | Promise<DomainEventBase>
 }
 
 interface ModuleProjection {
@@ -79,7 +79,7 @@ export class CommandDispatcher {
       return
     }
     try {
-      const domainEvent = handler.execute(command.action, command.payload)
+      const domainEvent = await handler.execute(command.action, command.payload)
       this.#store.append({ ...domainEvent, id: generateId() })
       ws.send(JSON.stringify({ id: command.id, ok: true }))
       const state = this.#projections[module].rebuild()

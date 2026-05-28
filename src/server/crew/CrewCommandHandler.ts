@@ -89,12 +89,22 @@ export class CrewCommandHandler {
   /**
    * Execute a command and return the domain event
    */
-  execute(action: string, payload: unknown): CrewDomainEvent {
+  async execute(action: string, payload: unknown): Promise<CrewDomainEvent> {
     const state = this.#projection.rebuild() as CrewState
+
+    // Simple in-memory repository implementations based on current state
+    const volunteerRepo = {
+      findAll: async (): Promise<{ id: VolunteerId; name: string }[]> => state.volunteers,
+      findById: async (id: VolunteerId): Promise<{ id: VolunteerId; name: string } | null> => {
+        return state.volunteers.find(v => v.id === id) ?? null
+      },
+      save: async (_volunteer: unknown): Promise<void> => {},
+      delete: async (_id: VolunteerId): Promise<void> => {},
+    }
 
     switch (action) {
       case 'CreateVolunteer':
-        return new CreateVolunteer().execute(payload as CreateVolunteerPayload)
+        return await new CreateVolunteer(volunteerRepo as any).execute(payload as CreateVolunteerPayload)
 
       case 'UpdateVolunteerName': {
         const p = payload as UpdateVolunteerNamePayload
