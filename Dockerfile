@@ -11,9 +11,6 @@ COPY package.json package-lock.json bunfig.toml ./
 # Install all dependencies
 RUN bun install
 
-# Create /data directory for Railway's persistent volume and set permissions
-RUN mkdir -p /data && chown appuser:appuser /data
-
 # Copy app files
 COPY src/ ./src/
 COPY tsconfig.json tsconfig.node.json ./
