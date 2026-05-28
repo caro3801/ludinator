@@ -69,9 +69,17 @@ const dispatchError = (msg: string): void => {
   document.dispatchEvent(new CustomEvent('crew-error', { detail: { message: msg } }))
 }
 
+// Create default empty repositories
+let volunteerRepo: VolunteerRepository = {
+  save: async () => {},
+  findById: async () => null,
+  findAll: async () => [],
+  delete: async () => {}
+}
+
 // Configure use cases
 if (volunteerForm) {
-  volunteerForm.createVolunteerUseCase = new CreateVolunteer()
+  volunteerForm.createVolunteerUseCase = new CreateVolunteer(volunteerRepo)
 }
 
 if (editVolunteerNameForm) {
@@ -169,9 +177,14 @@ ws.onState('crew', (data: unknown) => {
   const domainPosts = posts.map((p: unknown) => Post.fromJSON(p as { id: string; name: string; minVolunteers: number; slots: { id: string; postId: string; window: { day: string; startTime: string; endTime: string } }[] }))
   const domainSchedule = schedule ? Schedule.fromJSON(schedule as { id: string; editionId: string; assignments: unknown[] }) : null
 
-  const volunteerRepo = new InMemoryVolunteerRepo(domainVolunteers)
+  volunteerRepo = new InMemoryVolunteerRepo(domainVolunteers)
   const postRepo = new InMemoryPostRepo(domainPosts)
   const scheduleRepo = new InMemoryScheduleRepo(domainSchedule)
+
+  // Recreate use case with updated repository
+  if (volunteerForm) {
+    volunteerForm.createVolunteerUseCase = new CreateVolunteer(volunteerRepo)
+  }
 
   if (volunteerList) {
     volunteerList.refresh(volunteerRepo)
