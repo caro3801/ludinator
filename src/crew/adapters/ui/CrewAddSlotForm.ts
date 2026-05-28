@@ -21,16 +21,48 @@ interface Slot {
 export class CrewAddSlotForm extends HTMLElement {
   #useCase: UseCase<AddSlotParams, Slot> | null = null
   #posts: Post[] = []
+  #formData: { postId: string; day: string; startTime: string; endTime: string } = { postId: '', day: '', startTime: '', endTime: '' }
 
   set addSlotToPostUseCase(uc: UseCase<AddSlotParams, Slot> | null) { this.#useCase = uc }
 
   set posts(posts: Post[]) {
     this.#posts = posts
     this.#render()
+    this.#restoreFormData()
   }
 
   connectedCallback() {
     this.#render()
+  }
+
+  #saveFormData(): void {
+    const postSelect = this.querySelector<HTMLSelectElement>('[name="postId"]')
+    const dayInput = this.querySelector<HTMLInputElement>('[name="day"]')
+    const startTimeInput = this.querySelector<HTMLInputElement>('[name="startTime"]')
+    const endTimeInput = this.querySelector<HTMLInputElement>('[name="endTime"]')
+    
+    if (postSelect && dayInput && startTimeInput && endTimeInput) {
+      this.#formData = {
+        postId: postSelect.value,
+        day: dayInput.value,
+        startTime: startTimeInput.value,
+        endTime: endTimeInput.value,
+      }
+    }
+  }
+
+  #restoreFormData(): void {
+    const postSelect = this.querySelector<HTMLSelectElement>('[name="postId"]')
+    const dayInput = this.querySelector<HTMLInputElement>('[name="day"]')
+    const startTimeInput = this.querySelector<HTMLInputElement>('[name="startTime"]')
+    const endTimeInput = this.querySelector<HTMLInputElement>('[name="endTime"]')
+    
+    if (postSelect && dayInput && startTimeInput && endTimeInput) {
+      postSelect.value = this.#formData.postId
+      dayInput.value = this.#formData.day
+      startTimeInput.value = this.#formData.startTime
+      endTimeInput.value = this.#formData.endTime
+    }
   }
 
   #render() {
@@ -43,6 +75,7 @@ export class CrewAddSlotForm extends HTMLElement {
         <input type="time" name="startTime" required />
         <input type="time" name="endTime" required />
         <button type="submit">Ajouter le créneau</button>
+        <button type="reset" class="btn btn-outline-secondary ms-2">Effacer</button>
       </form>
     `
     const form = this.querySelector('form')
@@ -67,15 +100,15 @@ export class CrewAddSlotForm extends HTMLElement {
     
     if (!this.#useCase) return
     
+    // Sauvegarder les données du formulaire avant soumission
+    this.#saveFormData()
+    
     try {
       await this.#useCase.execute({ postId, day, startTime, endTime })
       this.dispatchEvent(new CustomEvent('slot-added', {
         detail: { postId, day, startTime, endTime },
         bubbles: true
       }))
-      if (e.target instanceof HTMLFormElement) {
-        e.target.reset()
-      }
     } catch (err) {
       const error = err as Error
       this.dispatchEvent(new CustomEvent<{ message: string }>('crew-error', { detail: { message: error.message }, bubbles: true }))

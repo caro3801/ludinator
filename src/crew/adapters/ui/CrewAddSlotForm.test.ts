@@ -38,6 +38,32 @@ describe('CrewAddSlotForm', () => {
     expect(el.querySelector('input[name="day"]')).not.toBeNull()
     expect(el.querySelector('input[name="startTime"]')).not.toBeNull()
     expect(el.querySelector('input[name="endTime"]')).not.toBeNull()
+    expect(el.querySelector<HTMLButtonElement>('button[type="reset"]')).not.toBeNull()
+  })
+
+  it('does not reset the form automatically after successful submission', async () => {
+    interface Slot { id: string }
+    const useCase = makeUseCase<{ postId: string, day: string, startTime: string, endTime: string }, Slot>({ id: 'slot-1' })
+    el.addSlotToPostUseCase = useCase
+
+    const postSelect = el.querySelector('select[name="postId"]') as HTMLSelectElement
+    const dayInput = el.querySelector('input[name="day"]') as HTMLInputElement
+    const startTimeInput = el.querySelector('input[name="startTime"]') as HTMLInputElement
+    const endTimeInput = el.querySelector('input[name="endTime"]') as HTMLInputElement
+    
+    postSelect.value = 'post-1'
+    dayInput.value = 'saturday'
+    startTimeInput.value = '09:00'
+    endTimeInput.value = '12:00'
+
+    el.querySelector('form')?.dispatchEvent(new Event('submit'))
+
+    await vi.waitFor(() => {
+      expect(postSelect.value).toBe('post-1')
+      expect(dayInput.value).toBe('saturday')
+      expect(startTimeInput.value).toBe('09:00')
+      expect(endTimeInput.value).toBe('12:00')
+    })
   })
 
   it('populates the post selector with all posts', () => {
