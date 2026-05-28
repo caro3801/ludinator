@@ -5,6 +5,9 @@ WORKDIR /app
 # Create non-root user
 RUN useradd -m appuser
 
+# Create /data directory and set permissions for Railway volume
+RUN mkdir -p /data && chown appuser:appuser /data
+
 # Copy package files
 COPY package.json package-lock.json bunfig.toml ./
 

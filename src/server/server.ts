@@ -23,8 +23,6 @@ const dbPath = process.env.RAILWAY_VOLUME_MOUNT_PATH
   ? `${process.env.RAILWAY_VOLUME_MOUNT_PATH}/ludinator.db`
   : 'ludinator.db'
 
-const db = new Database(dbPath)
-
 // Initialiser EventStore avec la base partagée
 const eventStore = new EventStore(dbPath)
 // Note: EventStore crée sa propre instance de Database, donc on ne peut pas la partager directement
