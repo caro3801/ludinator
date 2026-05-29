@@ -83,4 +83,36 @@ describe('CrewProjection', () => {
     expect(state.schedule).not.toBeNull()
     expect(state.schedule!.assignments).toHaveLength(1)
   })
+
+  it('copies slots to target post from SlotsCopiedToPost', () => {
+    const store = new EventStore(':memory:')
+    const sourcePost = Post.create('Source', 1)
+    sourcePost.addSlot(new TimeWindow('samedi', '09:00', '12:00'))
+    sourcePost.addSlot(new TimeWindow('samedi', '14:00', '18:00'))
+    const targetPost = Post.create('Target', 1)
+
+    store.append({ id: '1', module: 'crew', type: 'PostCreated', aggregateId: sourcePost.id, payload: sourcePost.toJSON(), occurredAt: '2024-01-01T10:00:00.000Z' })
+    store.append({ id: '2', module: 'crew', type: 'PostCreated', aggregateId: targetPost.id, payload: targetPost.toJSON(), occurredAt: '2024-01-01T10:00:01.000Z' })
+    
+    targetPost.addSlot(new TimeWindow('samedi', '09:00', '12:00'))
+    
+    store.append({ 
+      id: '3', 
+      module: 'crew', 
+      type: 'SlotsCopiedToPost', 
+      aggregateId: targetPost.id, 
+      payload: { 
+        sourcePost: sourcePost.toJSON(), 
+        targetPost: targetPost.toJSON(),
+        copiedSlotCount: 1 
+      }, 
+      occurredAt: '2024-01-01T10:00:02.000Z' 
+    })
+
+    const state = new CrewProjection(store).rebuild()
+    expect(state.posts).toHaveLength(2)
+    const updatedTargetPost = state.posts.find(p => p.id === targetPost.id)
+    expect(updatedTargetPost?.slots).toHaveLength(1)
+    expect(updatedTargetPost?.slots[0].window.day).toBe('samedi')
+  })
 })

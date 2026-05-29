@@ -34,6 +34,12 @@ export class CrewPostList extends HTMLElement {
           bubbles: true,
         }))
       }
+      if (action === 'copy-slots') {
+        this.dispatchEvent(new CustomEvent('slots-copy-requested', {
+          detail: { sourcePostId: postId },
+          bubbles: true,
+        }))
+      }
     })
   }
 
@@ -48,7 +54,10 @@ export class CrewPostList extends HTMLElement {
         <div class="d-flex align-items-center gap-2">
           <strong>${p.name.value}</strong>
           <span class="badge bg-secondary">min ${p.minVolunteers}</span>
-          <button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-auto"
+          <button class="btn btn-outline-primary btn-sm py-0 px-1 ms-auto"
+            data-action="copy-slots"
+            data-post-id="${p.id}">📋 Copier</button>
+          <button class="btn btn-outline-secondary btn-sm py-0 px-1"
             data-action="edit-post-name"
             data-post-id="${p.id}"
             data-name="${p.name.value}">✏️ Nom</button>

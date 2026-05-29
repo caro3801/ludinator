@@ -58,6 +58,8 @@ type SlotRemovedFromPostEvent = { type: 'SlotRemovedFromPost'; payload: { post: 
 type VolunteerAssignedEvent = { type: 'VolunteerAssigned'; payload: Schedule }
 type VolunteerUnassignedEvent = { type: 'VolunteerUnassigned'; payload: Schedule }
 
+type SlotsCopiedToPostEvent = { type: 'SlotsCopiedToPost'; payload: { sourcePost: Post; targetPost: Post; copiedSlotCount: number } }
+
 type CrewEvent =
   | VolunteerCreatedEvent
   | VolunteerNameUpdatedEvent
@@ -70,6 +72,7 @@ type CrewEvent =
   | SlotRemovedFromPostEvent
   | VolunteerAssignedEvent
   | VolunteerUnassignedEvent
+  | SlotsCopiedToPostEvent
 
 function applyEvent(state: CrewState, event: CrewEvent): CrewState {
   switch (event.type) {
@@ -149,6 +152,15 @@ function applyEvent(state: CrewState, event: CrewEvent): CrewState {
     case 'VolunteerAssigned':
     case 'VolunteerUnassigned':
       return { ...state, schedule: event.payload }
+
+    case 'SlotsCopiedToPost':
+      return {
+        ...state,
+        posts: state.posts.map((p) =>
+          p.id === event.payload.targetPost.id ? event.payload.targetPost :
+          p.id === event.payload.sourcePost.id ? event.payload.sourcePost : p
+        ),
+      }
 
     default:
       return state

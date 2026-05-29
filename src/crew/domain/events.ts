@@ -171,3 +171,17 @@ export class VolunteerUnassigned {
     this.occurredAt = occurredAt
   }
 }
+
+export class SlotsCopiedToPost {
+  readonly type = 'SlotsCopiedToPost'
+  readonly module = 'crew'
+  readonly aggregateId: PostId
+  readonly payload: { sourcePost: PostJSON; targetPost: PostJSON; copiedSlotCount: number }
+  readonly occurredAt: string
+
+  constructor({ sourcePost, targetPost, copiedSlotCount, occurredAt = new Date().toISOString() }: { sourcePost: PostJSON; targetPost: PostJSON; copiedSlotCount: number; occurredAt?: string }) {
+    this.aggregateId = targetPost.id
+    this.payload = { sourcePost, targetPost, copiedSlotCount }
+    this.occurredAt = occurredAt
+  }
+}

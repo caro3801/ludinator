@@ -72,6 +72,46 @@ describe('CrewCommandHandler', () => {
     expect((assignEvent.payload as { assignments: unknown[] }).assignments).toHaveLength(1)
   })
 
+  it('CopySlotsToPost throws when source post not found', async () => {
+    const targetPost = await handler.execute('CreatePost', { name: 'Bar', minVolunteers: 1 })
+    store.append({ ...targetPost, id: '1', occurredAt: new Date().toISOString() })
+    
+    await expect(handler.execute('CopySlotsToPost', { sourcePostId: 'x', targetPostId: '1' }))
+      .rejects.toThrow('Source post not found')
+  })
+
+  it('CopySlotsToPost throws when target post not found', async () => {
+    const sourcePost = await handler.execute('CreatePost', { name: 'Foo', minVolunteers: 1 })
+    store.append({ ...sourcePost, id: '1', occurredAt: new Date().toISOString() })
+    
+    await expect(handler.execute('CopySlotsToPost', { sourcePostId: '1', targetPostId: 'x' }))
+      .rejects.toThrow('Target post not found')
+  })
+
+  it('CopySlotsToPost copies slots from source to target', async () => {
+    const sourcePost = await handler.execute('CreatePost', { name: 'Foo', minVolunteers: 1 })
+    store.append({ ...sourcePost, id: '1', occurredAt: new Date().toISOString() })
+    
+    const state1 = projection.rebuild()
+    const slotEvent = await handler.execute('AddSlotToPost', {
+      postId: state1.posts[0].id,
+      day: 'samedi', startTime: '09:00', endTime: '12:00',
+    })
+    store.append({ ...slotEvent, id: '2', occurredAt: new Date().toISOString() })
+    
+    const targetPost = await handler.execute('CreatePost', { name: 'Bar', minVolunteers: 1 })
+    store.append({ ...targetPost, id: '3', occurredAt: new Date().toISOString() })
+    
+    const state = projection.rebuild()
+    const copyEvent = await handler.execute('CopySlotsToPost', {
+      sourcePostId: state.posts[0].id,
+      targetPostId: state.posts[1].id
+    })
+    
+    expect(copyEvent.type).toBe('SlotsCopiedToPost')
+    expect((copyEvent.payload as { copiedSlotCount: number }).copiedSlotCount).toBe(1)
+  })
+
   it('throws on unknown action', () => {
     expect(() => handler.execute('UnknownAction', {})).toThrow('Unknown action')
   })

@@ -132,6 +132,22 @@ describe('CrewPostList', () => {
     expect(events[0].slot.id).toBe(slot.id)
   })
 
+  it('renders a copy-slots button per post', async () => {
+    await el.refresh(repoWith([makePost('Accueil', 2)]))
+    expect(el.querySelector<HTMLButtonElement>('button[data-action="copy-slots"]')).not.toBeNull()
+  })
+
+  it('dispatches slots-copy-requested with sourcePostId on copy click', async () => {
+    const post = makePost('Accueil', 2)
+    await el.refresh(repoWith([post]))
+
+    const events: { sourcePostId: string }[] = []
+    el.addEventListener('slots-copy-requested', (e: Event) => events.push((e as CustomEvent<{ sourcePostId: string }>).detail))
+    el.querySelector<HTMLButtonElement>('button[data-action="copy-slots"]')?.click()
+
+    expect(events[0].sourcePostId).toBe(post.id)
+  })
+
   it('replaces content on subsequent refresh', async () => {
     await el.refresh(repoWith([makePost('Accueil', 2)]))
     await el.refresh(repoWith([makePost('Bar', 1)]))

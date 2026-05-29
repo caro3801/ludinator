@@ -33,6 +33,7 @@ import './adapters/ui/CrewPlanningView'
 import './adapters/ui/CrewStatsView'
 import './adapters/ui/CrewScheduleView'
 import './adapters/ui/CrewVolunteerPlanningView'
+import './adapters/ui/CrewCopySlotsForm'
 
 const EDITION_ID: EditionId = 'edition-2024'
 const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -48,6 +49,7 @@ type AddSlotFormElement = HTMLElement & { addSlotToPostUseCase: { execute: (para
 type EditSlotFormElement = HTMLElement & { updateSlotInPostUseCase: { execute: (params: { postId: string; slotId: string; day: string; startTime: string; endTime: string }) => Promise<unknown> }; open: (detail: { postId: string; slot: unknown }) => void }
 type EditPostNameFormElement = HTMLElement & { updatePostNameUseCase: { execute: (params: { postId: string; name: string }) => Promise<unknown> }; open: (detail: { postId: string; name: string }) => void }
 type AssignFormElement = HTMLElement & { editionId: EditionId; assignVolunteerUseCase: { execute: (params: { volunteerId: string; slotId: string; schedule: unknown; editionId: string }) => Promise<unknown> }; volunteers: Volunteer[]; posts: Post[]; selectSlot: (detail: { slotId: string; postId: string }) => void }
+type CopySlotsFormElement = HTMLElement & { copySlotsToPostUseCase: { execute: (params: { sourcePostId: string; targetPostId: string }) => Promise<unknown> }; open: (detail: { sourcePostId: string }) => void; posts: Post[] }
 type PlanningViewElement = HTMLElement & { refresh: (params: { scheduleRepo: ScheduleRepository; volunteerRepo: VolunteerRepository; postRepo: PostRepository }, editionId: EditionId) => Promise<void> }
 type StatsViewElement = HTMLElement & { refresh: (params: { scheduleRepo: ScheduleRepository; volunteerRepo: VolunteerRepository; postRepo: PostRepository }, editionId: EditionId) => Promise<void> }
 
@@ -61,6 +63,7 @@ const addSlotForm = document.querySelector<AddSlotFormElement>('crew-add-slot-fo
 const editSlotForm = document.querySelector<EditSlotFormElement>('crew-edit-slot-form')
 const editPostNameForm = document.querySelector<EditPostNameFormElement>('crew-edit-post-name-form')
 const assignForm = document.querySelector<AssignFormElement>('crew-assign-form')
+const copySlotsForm = document.querySelector<CopySlotsFormElement>('crew-copy-slots-form')
 const planningView = document.querySelector<PlanningViewElement>('crew-planning-view')
 const statsView = document.querySelector<StatsViewElement>('crew-stats-view')
 const offlineBanner = document.getElementById('offline-banner')
@@ -126,6 +129,14 @@ if (assignForm) {
     execute: async ({ volunteerId, slotId, schedule, editionId }: { volunteerId: string; slotId: string; schedule: unknown; editionId: string }) => {
       const result = new AssignVolunteer().execute({ volunteer: { id: volunteerId as VolunteerId, name: 'x' }, slot: { id: slotId as SlotId, postId: 'x' as PostId, window: { day: 'x', startTime: '00:00', endTime: '01:00' } }, schedule: schedule as any, editionId: editionId as EditionId })
       return result
+    },
+  }
+}
+
+if (copySlotsForm) {
+  copySlotsForm.copySlotsToPostUseCase = {
+    execute: async ({ sourcePostId, targetPostId }: { sourcePostId: string; targetPostId: string }) => {
+      return {}
     },
   }
 }
@@ -199,6 +210,9 @@ ws.onState('crew', (data: unknown) => {
     assignForm.volunteers = domainVolunteers
     assignForm.posts = domainPosts
   }
+  if (copySlotsForm) {
+    copySlotsForm.posts = domainPosts
+  }
 
   if (planningView) {
     planningView.refresh({ scheduleRepo, volunteerRepo, postRepo }, EDITION_ID)
@@ -229,6 +243,8 @@ interface SlotDeleteRequestedDetail { postId: string; slotId: string }
 interface AssignSlotRequestedDetail { slotId: string; postId: string }
 interface VolunteerAssignedDetail { volunteerId: string; slotId: string }
 interface AssignmentDeleteRequestedDetail { assignmentId: string }
+interface SlotsCopyRequestedDetail { sourcePostId: string }
+interface SlotsCopiedDetail { sourcePostId: string; targetPostId: string }
 
 document.addEventListener('volunteer-created', (e) => {
   const event = (e as CustomEvent<VolunteerCreated>).detail
@@ -299,6 +315,16 @@ document.addEventListener('volunteer-assigned', (e) => {
 document.addEventListener('assignment-delete-requested', (e) => {
   const detail = (e as CustomEvent<AssignmentDeleteRequestedDetail>).detail
   ws.send('crew', 'UnassignVolunteer', { assignmentId: detail.assignmentId }).catch((err) => dispatchError((err as Error).message))
+})
+
+document.addEventListener('slots-copy-requested', (e) => {
+  const detail = (e as CustomEvent<SlotsCopyRequestedDetail>).detail
+  if (copySlotsForm) copySlotsForm.open({ sourcePostId: detail.sourcePostId })
+})
+
+document.addEventListener('slots-copied', (e) => {
+  const detail = (e as CustomEvent<SlotsCopiedDetail>).detail
+  ws.send('crew', 'CopySlotsToPost', { sourcePostId: detail.sourcePostId, targetPostId: detail.targetPostId }).catch((err) => dispatchError((err as Error).message))
 })
 
 document.addEventListener('crew-error', (e) => {

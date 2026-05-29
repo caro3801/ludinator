@@ -9,6 +9,7 @@ import { RemoveSlotFromPost } from '../../crew/application/usecases/RemoveSlotFr
 import { UpdateSlotInPost } from '../../crew/application/usecases/UpdateSlotInPost'
 import { AssignVolunteer } from '../../crew/application/usecases/AssignVolunteer'
 import { UnassignVolunteer } from '../../crew/application/usecases/UnassignVolunteer'
+import { CopySlotsToPost } from '../../crew/application/usecases/CopySlotsToPost'
 import { CrewProjection } from './CrewProjection'
 import { VolunteerId, PostId, CrewSlotId, EditionId, ScheduleId } from '../../shared/types'
 
@@ -75,6 +76,7 @@ type RemoveSlotFromPostPayload = { postId: PostId; slotId: CrewSlotId }
 type UpdateSlotInPostPayload = { postId: PostId; slotId: CrewSlotId; day: string; startTime: string; endTime: string }
 type AssignVolunteerPayload = { volunteerId: VolunteerId; slotId: CrewSlotId }
 type UnassignVolunteerPayload = { assignmentId: string }
+type CopySlotsToPostPayload = { sourcePostId: PostId; targetPostId: PostId }
 
 /**
  * Handles commands for the Crew module
@@ -167,6 +169,15 @@ export class CrewCommandHandler {
         const p = payload as UnassignVolunteerPayload
         if (!state.schedule) throw new Error('No schedule found')
         return new UnassignVolunteer().execute({ schedule: state.schedule, assignmentId: p.assignmentId })
+      }
+
+      case 'CopySlotsToPost': {
+        const p = payload as CopySlotsToPostPayload
+        const sourcePost = state.posts.find((post) => post.id === p.sourcePostId)
+        const targetPost = state.posts.find((post) => post.id === p.targetPostId)
+        if (!sourcePost) throw new Error(`Source post not found: ${p.sourcePostId}`)
+        if (!targetPost) throw new Error(`Target post not found: ${p.targetPostId}`)
+        return new CopySlotsToPost().execute({ sourcePost, targetPost })
       }
 
       default:
