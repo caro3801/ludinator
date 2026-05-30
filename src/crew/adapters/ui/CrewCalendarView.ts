@@ -2,6 +2,7 @@ import { Schedule } from '../../domain/model/Schedule'
 import { Volunteer } from '../../domain/model/Volunteer'
 import { Post } from '../../domain/model/Post'
 import { EditionId, VolunteerId } from '../../../shared/types'
+import { compareDays } from '../../domain/utils/dayOrder'
 import type { ScheduleRepository } from '../../ports/ScheduleRepository'
 import type { VolunteerRepository } from '../../ports/VolunteerRepository'
 import type { PostRepository } from '../../ports/PostRepository'
@@ -100,8 +101,8 @@ export class CrewCalendarView extends HTMLElement {
     if (!this.#schedule) return '<p class="text-muted">Aucune affectation enregistrée.</p>'
     
     const slots = this.#getAllSlots()
-    const days = this.#getDays()
-    const timeSlots = this.#getTimeSlots()
+    const days = this.#getDays().sort(compareDays)
+    const timeSlots = this.#getTimeSlots().sort()
     
     // Create a map: day -> time -> { postName, assignments }
     const calendar: Record<string, Record<string, { postName: string, assignments: VolunteerId[] }[]>> = {}
