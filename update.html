@@ -17,6 +17,7 @@
       flex: 0 0 auto;
       width: 100%;
     }
+    .navbar .dropdown-menu { position: absolute; }
   </style>
 </head>
 <body>
@@ -25,13 +26,19 @@
     <div class="container">
       <a class="navbar-brand fw-bold" href="/">Ludinator</a>
       <div class="navbar-nav me-auto">
-        <a class="nav-link" href="/">Crew</a>
-        <a class="nav-link active" href="/update.html">Crew (Update)</a>
-        <a class="nav-link" href="/mioum.html">Mioum</a>
-        <a class="nav-link" href="/fest.html">Fest</a>
-        <a class="nav-link" href="/admin.html">Admin</a>
+        <div class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown">Crew</a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="/">Crew</a></li>
+            <li><a class="dropdown-item" href="/mioum.html">Mioum</a></li>
+            <li><a class="dropdown-item" href="/fest.html">Fest</a></li>
+          </ul>
+        </div>
       </div>
-      <span class="text-secondary small">Édition 2026</span>
+      <div class="d-flex">
+        <a class="nav-link" href="/admin.html">Admin</a>
+        <span class="text-secondary small ms-3">Édition 2026</span>
+      </div>
     </div>
   </nav>
 

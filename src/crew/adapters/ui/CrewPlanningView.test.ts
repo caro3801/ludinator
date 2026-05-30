@@ -502,5 +502,57 @@ describe('CrewPlanningView', () => {
       expect(content).toContain('Alice')
       expect(content).not.toContain('Bob')
     })
+
+    it('shows all posts when volunteer filter is reset to empty', async () => {
+      const bar = Post.create('Bar', 1)
+      const barSlot = bar.addSlot(new TimeWindow('saturday', '14:00', '16:00'))
+      const bob = Volunteer.create('Bob')
+      schedule.assign(bob, barSlot)
+
+      await el.refresh(
+        makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil, bar] }),
+        'edition-2024'
+      )
+
+      // Select Bob to filter
+      const select = el.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')
+      expect(select).not.toBeNull()
+      select!.value = bob.id
+      select!.dispatchEvent(new Event('change', { bubbles: true }))
+
+      // Only Bar should be visible
+      let content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Bar')
+      expect(content).not.toContain('Accueil')
+
+      // Reset to empty (show all)
+      select!.value = ''
+      select!.dispatchEvent(new Event('change', { bubbles: true }))
+
+      // Both posts should be visible again
+      content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Accueil')
+      expect(content).toContain('Bar')
+    })
+
+    it('shows no assignment message when selected volunteer has no assignments', async () => {
+      const bob = Volunteer.create('Bob')
+      // Bob has no assignments
+
+      await el.refresh(
+        makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil] }),
+        'edition-2024'
+      )
+
+      // Select Bob (no assignments)
+      const select = el.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')
+      expect(select).not.toBeNull()
+      select!.value = bob.id
+      select!.dispatchEvent(new Event('change', { bubbles: true }))
+
+      // Should show no assignment message
+      const content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Aucune affectation')
+    })
   })
 })
