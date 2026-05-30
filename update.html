@@ -56,6 +56,9 @@
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-planning">Planning</button>
       </li>
       <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-agenda">Agenda</button>
+      </li>
+      <li class="nav-item">
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-stats">Statistiques</button>
       </li>
     </ul>
@@ -149,6 +152,27 @@
               <div class="card-header">Planning</div>
               <div class="card-body">
                 <crew-planning-view></crew-planning-view>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-agenda" class="tab-pane fade">
+        <div class="row g-4">
+          <div class="col-md-4 write-col">
+            <div class="card write-card">
+              <div class="card-header">Affecter un bénévole</div>
+              <div class="card-body">
+                <crew-assign-form></crew-assign-form>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-8 read-col">
+            <div class="card">
+              <div class="card-header">Agenda</div>
+              <div class="card-body">
+                <crew-calendar-view></crew-calendar-view>
               </div>
             </div>
           </div>

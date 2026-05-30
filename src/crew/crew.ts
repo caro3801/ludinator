@@ -30,6 +30,7 @@ import './adapters/ui/CrewPostList'
 import './adapters/ui/CrewAddSlotForm'
 import './adapters/ui/CrewEditSlotForm'
 import './adapters/ui/CrewEditPostNameForm'
+import './adapters/ui/CrewCalendarView'
 import './adapters/ui/CrewAssignForm'
 import './adapters/ui/CrewPlanningView'
 import './adapters/ui/CrewStatsView'
@@ -54,6 +55,7 @@ type EditPostNameFormElement = HTMLElement & { updatePostNameUseCase: { execute:
 type AssignFormElement = HTMLElement & { editionId: EditionId; assignVolunteerUseCase: { execute: (params: { volunteerId: string; slotId: string; schedule: unknown; editionId: string }) => Promise<unknown> }; volunteers: Volunteer[]; posts: Post[]; selectSlot: (detail: { slotId: string; postId: string }) => void }
 type CopySlotsFormElement = HTMLElement & { copySlotsToPostUseCase: { execute: (params: { sourcePostId: string; targetPostId: string }) => Promise<unknown> }; open: (detail: { sourcePostId: string }) => void; posts: Post[] }
 type PlanningViewElement = HTMLElement & { refresh: (params: { scheduleRepo: ScheduleRepository; volunteerRepo: VolunteerRepository; postRepo: PostRepository }, editionId: EditionId) => Promise<void> }
+type CalendarViewElement = HTMLElement & { refresh: (params: { scheduleRepo: ScheduleRepository; volunteerRepo: VolunteerRepository; postRepo: PostRepository }, editionId: EditionId) => Promise<void> }
 type StatsViewElement = HTMLElement & { refresh: (params: { scheduleRepo: ScheduleRepository; volunteerRepo: VolunteerRepository; postRepo: PostRepository }, editionId: EditionId) => Promise<void> }
 
 // Get DOM elements with proper typing
@@ -68,6 +70,7 @@ const editPostNameForm = document.querySelector<EditPostNameFormElement>('crew-e
 const assignForm = document.querySelector<AssignFormElement>('crew-assign-form')
 const copySlotsForm = document.querySelector<CopySlotsFormElement>('crew-copy-slots-form')
 const planningView = document.querySelector<PlanningViewElement>('crew-planning-view')
+const calendarView = document.querySelector<CalendarViewElement>('crew-calendar-view')
 const statsView = document.querySelector<StatsViewElement>('crew-stats-view')
 const offlineBanner = document.getElementById('offline-banner')
 
@@ -266,6 +269,10 @@ ws.onState('crew', (data: unknown) => {
 
   if (planningView) {
     planningView.refresh({ scheduleRepo, volunteerRepo, postRepo }, EDITION_ID)
+  }
+
+  if (calendarView) {
+    calendarView.refresh({ scheduleRepo, volunteerRepo, postRepo }, EDITION_ID)
   }
 
   if (statsView) {
