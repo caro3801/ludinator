@@ -117,7 +117,8 @@ export class CrewPlanningView extends HTMLElement {
   }
 
   #renderVolunteerSelect(): string {
-    const options = this.#volunteers.map(v => 
+    const sortedVolunteers = [...this.#volunteers].sort((a, b) => a.name.value.localeCompare(b.name.value))
+    const options = sortedVolunteers.map(v => 
       `<option value="${v.id}" ${this.#selectedVolunteer === v.id ? 'selected' : ''}>${v.name.value}</option>`
     ).join('')
     return `
@@ -229,9 +230,10 @@ export class CrewPlanningView extends HTMLElement {
   }
 
   #renderByVolunteer(): string {
+    const sortedVolunteers = [...this.#volunteers].sort((a, b) => a.name.value.localeCompare(b.name.value))
     const volunteersToShow = this.#selectedVolunteer
-      ? this.#volunteers.filter(v => v.id === this.#selectedVolunteer)
-      : this.#volunteers
+      ? sortedVolunteers.filter(v => v.id === this.#selectedVolunteer)
+      : sortedVolunteers
     
     return volunteersToShow.map(volunteer => {
       const assignments = this.#schedule!.getAssignmentsForVolunteer(volunteer.id)

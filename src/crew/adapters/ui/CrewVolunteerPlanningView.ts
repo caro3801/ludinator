@@ -35,7 +35,8 @@ export class CrewVolunteerPlanningView extends HTMLElement {
       }
     }
 
-    this.innerHTML = (volunteers as Volunteer[]).map(volunteer => {
+    const sortedVolunteers = [...(volunteers as Volunteer[])].sort((a, b) => a.name.value.localeCompare(b.name.value))
+    this.innerHTML = sortedVolunteers.map(volunteer => {
       const assignments = schedule.getAssignmentsForVolunteer(volunteer.id)
       const slots = assignments
         .map(a => slotMap[a.slotId])

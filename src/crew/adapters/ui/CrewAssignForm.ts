@@ -79,13 +79,15 @@ export class CrewAssignForm extends HTMLElement {
 
   #render() {
     const firstPost = this.#posts[0]
+    const sortedVolunteers = [...this.#volunteers].sort((a, b) => a.name.value.localeCompare(b.name.value))
+    const sortedPosts = [...this.#posts].sort((a, b) => a.name.value.localeCompare(b.name.value))
     this.innerHTML = `
       <form>
         <select name="volunteerId" required>
-          ${this.#volunteers.map(v => `<option value="${v.id}">${v.name.value}</option>`).join('')}
+          ${sortedVolunteers.map(v => `<option value="${v.id}">${v.name.value}</option>`).join('')}
         </select>
         <select name="postId" required>
-          ${this.#posts.map(p => `<option value="${p.id}">${p.name.value}</option>`).join('')}
+          ${sortedPosts.map(p => `<option value="${p.id}">${p.name.value}</option>`).join('')}
         </select>
         <select name="slotId" required>
           ${this.#slotsFor(firstPost?.id)}
