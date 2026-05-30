@@ -23,20 +23,17 @@ export class CrewPlanningView extends HTMLElement {
       if (!target) return
       const toggle = target.closest<HTMLElement>('button[data-mode], button[data-day]')
       if (toggle) {
-        if (toggle.dataset.mode) this.#mode = toggle.dataset.mode as 'post' | 'volunteer'
+        if (toggle.dataset.mode) {
+          this.#mode = toggle.dataset.mode as 'post' | 'volunteer'
+          this.#selectedVolunteer = null // Reset volunteer filter when switching modes
+        }
         if (toggle.dataset.day) this.#day = toggle.dataset.day
-        this.#updateContent()
+        this.#render()
         return
       }
       const filterBtn = target.closest<HTMLElement>('button[data-filter="understaffed"]')
       if (filterBtn) {
         this.#onlyUnderstaffed = !this.#onlyUnderstaffed
-        this.#updateContent()
-        return
-      }
-      const volunteerSelect = target.closest<HTMLSelectElement>('select[data-filter="volunteer"]')
-      if (volunteerSelect) {
-        this.#selectedVolunteer = volunteerSelect.value ? volunteerSelect.value as VolunteerId : null
         this.#updateContent()
         return
       }
@@ -55,6 +52,13 @@ export class CrewPlanningView extends HTMLElement {
           bubbles: true,
         }))
       }
+    })
+
+    this.addEventListener('change', (e: Event) => {
+      const target = e.target as HTMLSelectElement | null
+      if (!target || !target.matches('select[data-filter="volunteer"]')) return
+      this.#selectedVolunteer = target.value ? target.value as VolunteerId : null
+      this.#updateContent()
     })
   }
 
@@ -117,10 +121,12 @@ export class CrewPlanningView extends HTMLElement {
       `<option value="${v.id}" ${this.#selectedVolunteer === v.id ? 'selected' : ''}>${v.name.value}</option>`
     ).join('')
     return `
-      <select class="form-select form-select-sm" style="width: auto; display: inline-block;" data-filter="volunteer">
-        <option value="">-- Tous les bénévoles --</option>
-        ${options}
-      </select>
+      <div class="d-inline-block">
+        <select class="form-select form-select-sm" data-filter="volunteer" style="min-width: 180px;">
+          <option value="">-- Tous les bénévoles --</option>
+          ${options}
+        </select>
+      </div>
     `
   }
 

@@ -297,4 +297,106 @@ describe('CrewPlanningView', () => {
       expect(el.querySelector<HTMLButtonElement>('button[data-action="add-assignment"]')).toBeNull()
     })
   })
+
+  describe('volunteer filter in by-volunteer mode', () => {
+    it('renders a volunteer select dropdown in volunteer mode', async () => {
+      await el.refresh(makeRepos({ schedule, volunteers: [alice], posts: [accueil] }), 'edition-2024')
+      el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
+      expect(el.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')).not.toBeNull()
+    })
+
+    it('populates volunteer select with all volunteers', async () => {
+      const bob = Volunteer.create('Bob')
+      await el.refresh(
+        makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil] }),
+        'edition-2024'
+      )
+      el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
+      const select = el.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')
+      expect(select?.querySelectorAll('option').length).toBe(3) // empty option + alice + bob
+      expect(select?.textContent).toContain('Alice')
+      expect(select?.textContent).toContain('Bob')
+    })
+
+    it('shows all volunteers when no volunteer is selected', async () => {
+      const bob = Volunteer.create('Bob')
+      await el.refresh(
+        makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil] }),
+        'edition-2024'
+      )
+      el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
+      const content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Alice')
+      expect(content).toContain('Bob')
+    })
+
+    it('renders volunteer select dropdown with all volunteers', async () => {
+      const bob = Volunteer.create('Bob')
+      await el.refresh(
+        makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil] }),
+        'edition-2024'
+      )
+      
+      // Switch to volunteer mode
+      el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
+      
+      const select = el.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')
+      expect(select).not.toBeNull()
+      expect(select?.options.length).toBe(3) // empty + Alice + Bob
+      expect(select?.textContent).toContain('Alice')
+      expect(select?.textContent).toContain('Bob')
+    })
+
+    it('resets volunteer filter when switching modes', async () => {
+      const bob = Volunteer.create('Bob')
+      await el.refresh(
+        makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil] }),
+        'edition-2024'
+      )
+      el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
+      
+      const select = el.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')
+      expect(select).not.toBeNull()
+      select!.value = alice.id
+      select?.dispatchEvent(new Event('change'))
+      
+      // Switch to post mode and back
+      el.querySelector<HTMLButtonElement>('button[data-mode="post"]')?.click()
+      el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
+      
+      const selectAfter = el.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')
+      expect(selectAfter?.value).toBe('')
+    })
+
+    it('shows only selected volunteer after selection', async () => {
+      const bob = Volunteer.create('Bob')
+      await el.refresh(
+        makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil] }),
+        'edition-2024'
+      )
+      
+      // Switch to volunteer mode - should show all volunteers
+      el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
+      let content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Alice')
+      expect(content).toContain('Bob')
+      
+      // Select Alice from dropdown
+      const select = el.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')
+      expect(select).not.toBeNull()
+      
+      // Find Alice's option and select it
+      const aliceOption = Array.from(select!.options).find(opt => opt.text.includes('Alice'))
+      expect(aliceOption).toBeDefined()
+      aliceOption!.selected = true
+      
+      // Dispatch change event
+      select!.dispatchEvent(new Event('change', { bubbles: true }))
+      
+      // Now only Alice should be visible
+      content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Alice')
+      expect(content).not.toContain('Bob')
+    })
+  })
 })
