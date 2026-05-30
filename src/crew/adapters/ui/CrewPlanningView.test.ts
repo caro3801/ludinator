@@ -272,6 +272,74 @@ describe('CrewPlanningView', () => {
       const content = el.querySelector<HTMLElement>('.planning-content')?.textContent
       expect(content).toContain('Bar')
     })
+
+    it('shows available volunteers button when understaffed filter is active', async () => {
+      const bar = Post.create('Bar', 1)
+      const barSlot = bar.addSlot(new TimeWindow('saturday', '14:00', '16:00'))
+
+      await el.refresh(
+        makeRepos({ schedule, volunteers: [alice], posts: [accueil, bar] }),
+        'edition-2024'
+      )
+      el.querySelector<HTMLButtonElement>('button[data-filter="understaffed"]')?.click()
+
+      expect(el.querySelector<HTMLButtonElement>('button[data-filter="available-volunteers"]')).not.toBeNull()
+    })
+
+    it('hides available volunteers button when understaffed filter is inactive', async () => {
+      await el.refresh(makeRepos({ schedule, volunteers: [alice], posts: [accueil] }), 'edition-2024')
+
+      expect(el.querySelector<HTMLButtonElement>('button[data-filter="available-volunteers"]')).toBeNull()
+    })
+
+    it('shows available volunteers per slot when button is clicked', async () => {
+      const bar = Post.create('Bar', 2) // Needs 2 volunteers
+      const barSlot = bar.addSlot(new TimeWindow('saturday', '09:00', '12:00')) // Same time as accueil's satSlot
+      const bob = Volunteer.create('Bob')
+      const charlie = Volunteer.create('Charlie')
+      // Alice is assigned to accueil's saturday 09:00-12:00 slot
+      // So Alice is NOT available for bar's saturday 09:00-12:00 slot (same time)
+
+      await el.refresh(
+        makeRepos({ schedule, volunteers: [alice, bob, charlie], posts: [accueil, bar] }),
+        'edition-2024'
+      )
+      el.querySelector<HTMLButtonElement>('button[data-filter="understaffed"]')?.click()
+
+      // Click available volunteers button
+      const availableBtn = el.querySelector<HTMLButtonElement>('button[data-filter="available-volunteers"]')
+      expect(availableBtn).not.toBeNull()
+      availableBtn?.click()
+
+      // Should show Bob and Charlie as available for the understaffed slots
+      // Alice is not available for saturday 09:00-12:00 because she's already assigned to accueil at that time
+      const content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Bob')
+      expect(content).toContain('Charlie')
+    })
+
+    it('does not show volunteer if assigned to same time slot on different post', async () => {
+      const bar = Post.create('Bar', 2)
+      const barSlot = bar.addSlot(new TimeWindow('saturday', '09:00', '12:00')) // Same time as accueil's satSlot
+      const bob = Volunteer.create('Bob')
+      // Alice is assigned to accueil saturday 09:00-12:00
+      // Alice should NOT be available for bar saturday 09:00-12:00
+
+      await el.refresh(
+        makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil, bar] }),
+        'edition-2024'
+      )
+      el.querySelector<HTMLButtonElement>('button[data-filter="understaffed"]')?.click()
+
+      const availableBtn = el.querySelector<HTMLButtonElement>('button[data-filter="available-volunteers"]')
+      expect(availableBtn).not.toBeNull()
+      availableBtn?.click()
+
+      // Alice should NOT appear as available (already assigned to same time slot)
+      // Bob should appear as available
+      const content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Bob')
+    })
   })
 
   describe('"+" button per slot', () => {

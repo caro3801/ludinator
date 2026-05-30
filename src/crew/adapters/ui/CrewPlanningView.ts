@@ -34,7 +34,14 @@ export class CrewPlanningView extends HTMLElement {
       const filterBtn = target.closest<HTMLElement>('button[data-filter="understaffed"]')
       if (filterBtn) {
         this.#onlyUnderstaffed = !this.#onlyUnderstaffed
-        this.#updateContent()
+        if (!this.#onlyUnderstaffed) this.#showAvailableVolunteers = false
+        this.#render()
+        return
+      }
+      const availableBtn = target.closest<HTMLElement>('button[data-filter="available-volunteers"]')
+      if (availableBtn) {
+        this.#showAvailableVolunteers = !this.#showAvailableVolunteers
+        this.#render()
         return
       }
       const del = target.closest<HTMLElement>('button[data-action="unassign"]')
@@ -155,10 +162,47 @@ export class CrewPlanningView extends HTMLElement {
             `).join('')}
           </div>` : ''}
         <button class="btn btn-sm btn-outline-warning ${this.#onlyUnderstaffed ? 'active' : ''}" data-filter="understaffed">⚠ Incomplets seulement</button>
+        ${this.#onlyUnderstaffed ? '<button class="btn btn-sm btn-outline-info" data-filter="available-volunteers">Bénévoles disponibles</button>' : ''}
         ${this.#renderVolunteerSelect()}
       </div>
       <div class="planning-content">${this.#renderContent()}</div>
     `
+  }
+
+  #showAvailableVolunteers: boolean = false
+
+  #getAvailableVolunteersForSlot(slotId: SlotId): Volunteer[] {
+    if (!this.#schedule) return []
+    
+    const slot = this.#findSlotById(slotId)
+    if (!slot) return []
+    
+    // Get volunteers assigned to this exact time slot (same day, startTime, endTime) across ALL posts
+    const assignedAtSameTime = new Set<VolunteerId>()
+    for (const post of this.#posts) {
+      for (const s of post.slots) {
+        if (s.window.day === slot.window.day && 
+            s.window.startTime === slot.window.startTime && 
+            s.window.endTime === slot.window.endTime) {
+          const assignments = this.#schedule.getAssignmentsForSlot(s.id)
+          for (const a of assignments) {
+            assignedAtSameTime.add(a.volunteerId)
+          }
+        }
+      }
+    }
+    
+    // Return volunteers who are NOT assigned to any slot at the same time
+    return this.#volunteers.filter(v => !assignedAtSameTime.has(v.id))
+  }
+
+  #findSlotById(slotId: SlotId): { window: { day: string, startTime: string, endTime: string } } | null {
+    for (const post of this.#posts) {
+      for (const slot of post.slots) {
+        if (slot.id === slotId) return { window: slot.window }
+      }
+    }
+    return null
   }
 
   #updateContent(): void {
@@ -185,7 +229,8 @@ export class CrewPlanningView extends HTMLElement {
 
   #renderByPost(): string {
     const volunteerMap: Record<string, string> = Object.fromEntries(this.#volunteers.map(v => [v.id, v.name.value]))
-    type DaySlots = Record<string, { time: string, staffed: boolean, addBtn: string, tags: string[] }[]>
+    type SlotData = { time: string, staffed: boolean, addBtn: string, tags: string[], availableVolunteers: string[] }
+    type DaySlots = Record<string, SlotData[]>
     type DaysMap = Record<string, DaySlots>
     const days: DaysMap = {}
 
@@ -220,11 +265,18 @@ export class CrewPlanningView extends HTMLElement {
           const btn = `<button class="btn btn-link btn-sm p-0 ms-1 text-danger" data-action="unassign" data-assignment-id="${a.id}" title="Retirer">✕</button>`
           return tag + btn
         })
+        
+        // Get available volunteers for this slot (not assigned to same time on any post)
+        const availableVolunteers = this.#showAvailableVolunteers && !staffed 
+          ? this.#getAvailableVolunteersForSlot(slot.id).map(v => v.name.value)
+          : []
+        
         days[day][post.name.value].push({
           time: `${slot.window.startTime}–${slot.window.endTime}`,
           staffed,
           addBtn,
           tags,
+          availableVolunteers,
         })
       }
     }
@@ -237,7 +289,12 @@ export class CrewPlanningView extends HTMLElement {
         <div class="mb-2">
           <strong>${postName}</strong>
           <ul class="mb-0">
-            ${slots.map(s => `<li class="small">${s.time}${s.staffed ? '' : ' <span class="text-warning">⚠</span>'} — ${s.tags.length ? s.tags.join(', ') : '<span class="text-muted">Aucun bénévole</span>'}${s.addBtn}</li>`).join('')}
+            ${slots.map(s => {
+              const availableHtml = s.availableVolunteers.length > 0 
+                ? ` — <span class="text-info">Disponibles: ${s.availableVolunteers.join(', ')}</span>` 
+                : ''
+              return `<li class="small">${s.time}${s.staffed ? '' : ' <span class="text-warning">⚠</span>'} — ${s.tags.length ? s.tags.join(', ') : '<span class="text-muted">Aucun bénévole</span>'}${s.addBtn}${availableHtml}</li>`
+            }).join('')}
           </ul>
         </div>
       `).join('')}
