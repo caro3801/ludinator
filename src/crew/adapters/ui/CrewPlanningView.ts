@@ -155,7 +155,7 @@ export class CrewPlanningView extends HTMLElement {
             `).join('')}
           </div>` : ''}
         <button class="btn btn-sm btn-outline-warning ${this.#onlyUnderstaffed ? 'active' : ''}" data-filter="understaffed">⚠ Incomplets seulement</button>
-        ${this.#mode === 'volunteer' ? this.#renderVolunteerSelect() : ''}
+        ${this.#renderVolunteerSelect()}
       </div>
       <div class="planning-content">${this.#renderContent()}</div>
     `
@@ -190,9 +190,24 @@ export class CrewPlanningView extends HTMLElement {
     const days: DaysMap = {}
 
     for (const post of this.#posts) {
+      // When filtering by volunteer, only show posts that have at least one slot with that volunteer
+      if (this.#selectedVolunteer) {
+        const postHasVolunteer = post.slots.some(slot => {
+          const slotAssignments = this.#schedule!.getAssignmentsForSlot(slot.id)
+          return slotAssignments.some(a => a.volunteerId === this.#selectedVolunteer)
+        })
+        if (!postHasVolunteer) continue
+      }
+
       for (const slot of post.slots) {
         if (this.#day !== 'all' && slot.window.day !== this.#day) continue
-        const assignments = this.#schedule!.getAssignmentsForSlot(slot.id)
+        let assignments = this.#schedule!.getAssignmentsForSlot(slot.id)
+        // Filter by selected volunteer if one is selected
+        if (this.#selectedVolunteer) {
+          assignments = assignments.filter(a => a.volunteerId === this.#selectedVolunteer)
+        }
+        // When filtering by volunteer, only show slots where that volunteer is assigned
+        if (this.#selectedVolunteer && assignments.length === 0) continue
         const staffed = assignments.length >= post.minVolunteers
         if (this.#onlyUnderstaffed && staffed) continue
         const day = slot.window.day

@@ -298,9 +298,13 @@ describe('CrewPlanningView', () => {
     })
   })
 
-  describe('volunteer filter in by-volunteer mode', () => {
-    it('renders a volunteer select dropdown in volunteer mode', async () => {
+  describe('volunteer filter', () => {
+    it('renders volunteer select dropdown in both modes', async () => {
       await el.refresh(makeRepos({ schedule, volunteers: [alice], posts: [accueil] }), 'edition-2024')
+      // Should be visible in by-post mode (default)
+      expect(el.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')).not.toBeNull()
+      
+      // Should still be visible in by-volunteer mode
       el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
       expect(el.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')).not.toBeNull()
     })
@@ -311,27 +315,56 @@ describe('CrewPlanningView', () => {
         makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil] }),
         'edition-2024'
       )
-      el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
+      // Select should be visible without switching mode
       const select = el.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')
       expect(select?.querySelectorAll('option').length).toBe(3) // empty option + alice + bob
       expect(select?.textContent).toContain('Alice')
       expect(select?.textContent).toContain('Bob')
     })
 
-    it('shows all volunteers when no volunteer is selected', async () => {
+    it('shows all volunteers when no volunteer is selected in by-post mode', async () => {
       const bob = Volunteer.create('Bob')
+      schedule.assign(bob, satSlot) // Assign Bob to saturday slot
       await el.refresh(
         makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil] }),
         'edition-2024'
       )
-      el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
       const content = el.querySelector<HTMLElement>('.planning-content')?.textContent
       expect(content).toContain('Alice')
       expect(content).toContain('Bob')
     })
 
-    it('renders volunteer select dropdown with all volunteers', async () => {
+    it('filters by volunteer in by-post mode', async () => {
       const bob = Volunteer.create('Bob')
+      schedule.assign(bob, satSlot) // Assign Bob to saturday slot
+      await el.refresh(
+        makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil] }),
+        'edition-2024'
+      )
+      
+      // Both volunteers should be visible initially
+      let content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Alice')
+      expect(content).toContain('Bob')
+      
+      // Select Bob from dropdown
+      const select = el.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')
+      expect(select).not.toBeNull()
+      
+      const bobOption = Array.from(select!.options).find(opt => opt.text.includes('Bob'))
+      expect(bobOption).toBeDefined()
+      bobOption!.selected = true
+      select!.dispatchEvent(new Event('change', { bubbles: true }))
+      
+      // Only Bob's assignments should be visible
+      content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Bob')
+      expect(content).not.toContain('Alice')
+    })
+
+    it('filters by volunteer in by-volunteer mode', async () => {
+      const bob = Volunteer.create('Bob')
+      schedule.assign(bob, satSlot) // Assign Bob to saturday slot
       await el.refresh(
         makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil] }),
         'edition-2024'
@@ -340,11 +373,24 @@ describe('CrewPlanningView', () => {
       // Switch to volunteer mode
       el.querySelector<HTMLButtonElement>('button[data-mode="volunteer"]')?.click()
       
+      // Both volunteers should be visible
+      let content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Alice')
+      expect(content).toContain('Bob')
+      
+      // Select Alice from dropdown
       const select = el.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')
       expect(select).not.toBeNull()
-      expect(select?.options.length).toBe(3) // empty + Alice + Bob
-      expect(select?.textContent).toContain('Alice')
-      expect(select?.textContent).toContain('Bob')
+      
+      const aliceOption = Array.from(select!.options).find(opt => opt.text.includes('Alice'))
+      expect(aliceOption).toBeDefined()
+      aliceOption!.selected = true
+      select!.dispatchEvent(new Event('change', { bubbles: true }))
+      
+      // Only Alice should be visible
+      content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Alice')
+      expect(content).not.toContain('Bob')
     })
 
     it('resets volunteer filter when switching modes', async () => {
@@ -395,6 +441,64 @@ describe('CrewPlanningView', () => {
       
       // Now only Alice should be visible
       content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Alice')
+      expect(content).not.toContain('Bob')
+    })
+
+    it('in by-post mode, only shows posts with selected volunteer', async () => {
+      const bar = Post.create('Bar', 1)
+      const barSlot = bar.addSlot(new TimeWindow('saturday', '14:00', '16:00'))
+      const bob = Volunteer.create('Bob')
+      schedule.assign(bob, barSlot) // Bob is only assigned to Bar, not Accueil
+
+      await el.refresh(
+        makeRepos({ schedule, volunteers: [alice, bob], posts: [accueil, bar] }),
+        'edition-2024'
+      )
+
+      // In by-post mode (default), both posts should be visible
+      let content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Accueil')
+      expect(content).toContain('Bar')
+
+      // Select Bob from dropdown
+      const select = el.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')
+      expect(select).not.toBeNull()
+      const bobOption = Array.from(select!.options).find(opt => opt.text.includes('Bob'))
+      expect(bobOption).toBeDefined()
+      bobOption!.selected = true
+      select!.dispatchEvent(new Event('change', { bubbles: true }))
+
+      // Only Bar should be visible (where Bob is assigned), not Accueil
+      content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Bar')
+      expect(content).toContain('Bob')
+      expect(content).not.toContain('Accueil')
+    })
+
+    it('in by-post mode, only shows slots where selected volunteer is assigned', async () => {
+      const bar = Post.create('Bar', 1)
+      const barSlot1 = bar.addSlot(new TimeWindow('saturday', '14:00', '16:00'))
+      const barSlot2 = bar.addSlot(new TimeWindow('sunday', '14:00', '16:00'))
+      const bob = Volunteer.create('Bob')
+      schedule.assign(alice, barSlot1) // Alice is assigned to Bar slot 1
+      schedule.assign(bob, barSlot2) // Bob is assigned to Bar slot 2
+
+      await el.refresh(
+        makeRepos({ schedule, volunteers: [alice, bob], posts: [bar] }),
+        'edition-2024'
+      )
+
+      // Select Alice from dropdown
+      const select = el.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')
+      expect(select).not.toBeNull()
+      const aliceOption = Array.from(select!.options).find(opt => opt.text.includes('Alice'))
+      aliceOption!.selected = true
+      select!.dispatchEvent(new Event('change', { bubbles: true }))
+
+      // Only Bar slot 1 (14:00-16:00 saturday) should be visible, not slot 2
+      const content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('14:00–16:00')
       expect(content).toContain('Alice')
       expect(content).not.toContain('Bob')
     })
