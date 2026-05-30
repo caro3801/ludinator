@@ -36,6 +36,7 @@ import './adapters/ui/CrewVolunteerPlanningView'
 import './adapters/ui/CrewCopySlotsForm'
 
 const EDITION_ID: EditionId = 'edition-2024'
+const IS_READONLY = window.location.pathname === '/'
 const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
 const ws = new WsClient(`${wsProtocol}//${window.location.host}/ws`)
 
@@ -68,9 +69,24 @@ const planningView = document.querySelector<PlanningViewElement>('crew-planning-
 const statsView = document.querySelector<StatsViewElement>('crew-stats-view')
 const offlineBanner = document.getElementById('offline-banner')
 
+// Helper to hide elements in read-only mode
+const hideInReadOnly = (...elements: (HTMLElement | null)[]): void => {
+  if (IS_READONLY) {
+    elements.forEach(el => { if (el) el.hidden = true })
+  }
+}
+
+// Apply readonly mode class to body
+if (IS_READONLY) {
+  document.body.classList.add('readonly-mode')
+}
+
 const dispatchError = (msg: string): void => {
   document.dispatchEvent(new CustomEvent('crew-error', { detail: { message: msg } }))
 }
+
+// Hide write forms in read-only mode
+hideInReadOnly(volunteerForm, editVolunteerNameForm, postForm, addSlotForm, editSlotForm, editPostNameForm, assignForm, copySlotsForm)
 
 // Create default empty repositories
 let volunteerRepo: VolunteerRepository = {
@@ -80,64 +96,66 @@ let volunteerRepo: VolunteerRepository = {
   delete: async () => {}
 }
 
-// Configure use cases
-if (volunteerForm) {
-  volunteerForm.createVolunteerUseCase = new CreateVolunteer(volunteerRepo)
-}
-
-if (editVolunteerNameForm) {
-  editVolunteerNameForm.updateVolunteerNameUseCase = {
-    execute: async ({ volunteerId, name }: { volunteerId: string; name: string }) => {
-      return { id: volunteerId, name: { value: name } }
-    },
+// Configure use cases - skip in read-only mode
+if (!IS_READONLY) {
+  if (volunteerForm) {
+    volunteerForm.createVolunteerUseCase = new CreateVolunteer(volunteerRepo)
   }
-}
 
-if (postForm) {
-  postForm.createPostUseCase = new CreatePost()
-}
-
-if (editPostNameForm) {
-  editPostNameForm.updatePostNameUseCase = {
-    execute: async ({ postId, name }: { postId: string; name: string }) => {
-      return { id: postId, name: { value: name } }
-    },
+  if (editVolunteerNameForm) {
+    editVolunteerNameForm.updateVolunteerNameUseCase = {
+      execute: async ({ volunteerId, name }: { volunteerId: string; name: string }) => {
+        return { id: volunteerId, name: { value: name } }
+      },
+    }
   }
-}
 
-if (addSlotForm) {
-  addSlotForm.addSlotToPostUseCase = {
-    execute: async ({ postId, day, startTime, endTime }: { postId: string; day: string; startTime: string; endTime: string }) => {
-      const result = new AddSlotToPost().execute({ post: { id: postId as PostId, name: 'x', minVolunteers: 1, slots: [] }, day, startTime, endTime })
-      return result
-    },
+  if (postForm) {
+    postForm.createPostUseCase = new CreatePost()
   }
-}
 
-if (editSlotForm) {
-  editSlotForm.updateSlotInPostUseCase = {
-    execute: async ({ postId, slotId, day, startTime, endTime }: { postId: string; slotId: string; day: string; startTime: string; endTime: string }) => {
-      const result = new UpdateSlotInPost().execute({ post: { id: postId as PostId, name: 'x', minVolunteers: 1, slots: [] }, slotId: slotId as SlotId, day, startTime, endTime })
-      return result
-    },
+  if (editPostNameForm) {
+    editPostNameForm.updatePostNameUseCase = {
+      execute: async ({ postId, name }: { postId: string; name: string }) => {
+        return { id: postId, name: { value: name } }
+      },
+    }
   }
-}
 
-if (assignForm) {
-  assignForm.editionId = EDITION_ID
-  assignForm.assignVolunteerUseCase = {
-    execute: async ({ volunteerId, slotId, schedule, editionId }: { volunteerId: string; slotId: string; schedule: unknown; editionId: string }) => {
-      const result = new AssignVolunteer().execute({ volunteer: { id: volunteerId as VolunteerId, name: 'x' }, slot: { id: slotId as SlotId, postId: 'x' as PostId, window: { day: 'x', startTime: '00:00', endTime: '01:00' } }, schedule: schedule as any, editionId: editionId as EditionId })
-      return result
-    },
+  if (addSlotForm) {
+    addSlotForm.addSlotToPostUseCase = {
+      execute: async ({ postId, day, startTime, endTime }: { postId: string; day: string; startTime: string; endTime: string }) => {
+        const result = new AddSlotToPost().execute({ post: { id: postId as PostId, name: 'x', minVolunteers: 1, slots: [] }, day, startTime, endTime })
+        return result
+      },
+    }
   }
-}
 
-if (copySlotsForm) {
-  copySlotsForm.copySlotsToPostUseCase = {
-    execute: async ({ sourcePostId, targetPostId }: { sourcePostId: string; targetPostId: string }) => {
-      return {}
-    },
+  if (editSlotForm) {
+    editSlotForm.updateSlotInPostUseCase = {
+      execute: async ({ postId, slotId, day, startTime, endTime }: { postId: string; slotId: string; day: string; startTime: string; endTime: string }) => {
+        const result = new UpdateSlotInPost().execute({ post: { id: postId as PostId, name: 'x', minVolunteers: 1, slots: [] }, slotId: slotId as SlotId, day, startTime, endTime })
+        return result
+      },
+    }
+  }
+
+  if (assignForm) {
+    assignForm.editionId = EDITION_ID
+    assignForm.assignVolunteerUseCase = {
+      execute: async ({ volunteerId, slotId, schedule, editionId }: { volunteerId: string; slotId: string; schedule: unknown; editionId: string }) => {
+        const result = new AssignVolunteer().execute({ volunteer: { id: volunteerId as VolunteerId, name: 'x' }, slot: { id: slotId as SlotId, postId: 'x' as PostId, window: { day: 'x', startTime: '00:00', endTime: '01:00' } }, schedule: schedule as any, editionId: editionId as EditionId })
+        return result
+      },
+    }
+  }
+
+  if (copySlotsForm) {
+    copySlotsForm.copySlotsToPostUseCase = {
+      execute: async ({ sourcePostId, targetPostId }: { sourcePostId: string; targetPostId: string }) => {
+        return {}
+      },
+    }
   }
 }
 
@@ -192,8 +210,8 @@ ws.onState('crew', (data: unknown) => {
   const postRepo = new InMemoryPostRepo(domainPosts)
   const scheduleRepo = new InMemoryScheduleRepo(domainSchedule)
 
-  // Recreate use case with updated repository
-  if (volunteerForm) {
+  // Recreate use case with updated repository - skip in read-only mode
+  if (!IS_READONLY && volunteerForm) {
     volunteerForm.createVolunteerUseCase = new CreateVolunteer(volunteerRepo)
   }
 
@@ -246,14 +264,19 @@ interface AssignmentDeleteRequestedDetail { assignmentId: string }
 interface SlotsCopyRequestedDetail { sourcePostId: string }
 interface SlotsCopiedDetail { sourcePostId: string; targetPostId: string }
 
+// Helper to wrap command sending - only sends in non-read-only mode
+const sendCommand = IS_READONLY ? null : ws.send.bind(ws)
+
 document.addEventListener('volunteer-created', (e) => {
+  if (!sendCommand) return
   const event = (e as CustomEvent<VolunteerCreated>).detail
-  ws.send('crew', 'CreateVolunteer', { name: event.payload.name }).catch((err) => dispatchError((err as Error).message))
+  sendCommand('crew', 'CreateVolunteer', { name: event.payload.name }).catch((err) => dispatchError((err as Error).message))
 })
 
 document.addEventListener('volunteer-name-updated', (e) => {
+  if (!sendCommand) return
   const detail = (e as CustomEvent<VolunteerNameUpdatedDetail>).detail
-  ws.send('crew', 'UpdateVolunteerName', detail).catch((err) => dispatchError((err as Error).message))
+  sendCommand('crew', 'UpdateVolunteerName', detail).catch((err) => dispatchError((err as Error).message))
 })
 
 document.addEventListener('volunteer-edit-name-requested', (e) => {
@@ -261,18 +284,21 @@ document.addEventListener('volunteer-edit-name-requested', (e) => {
 })
 
 document.addEventListener('volunteer-delete-requested', (e) => {
+  if (!sendCommand) return
   const detail = (e as CustomEvent<VolunteerDeleteRequestedDetail>).detail
-  ws.send('crew', 'DeleteVolunteer', { volunteerId: detail.volunteerId }).catch((err) => dispatchError((err as Error).message))
+  sendCommand('crew', 'DeleteVolunteer', { volunteerId: detail.volunteerId }).catch((err) => dispatchError((err as Error).message))
 })
 
 document.addEventListener('post-created', (e) => {
+  if (!sendCommand) return
   const event = (e as CustomEvent<PostCreated>).detail
-  ws.send('crew', 'CreatePost', { name: event.payload.name, minVolunteers: event.payload.minVolunteers }).catch((err) => dispatchError((err as Error).message))
+  sendCommand('crew', 'CreatePost', { name: event.payload.name, minVolunteers: event.payload.minVolunteers }).catch((err) => dispatchError((err as Error).message))
 })
 
 document.addEventListener('post-name-updated', (e) => {
+  if (!sendCommand) return
   const detail = (e as CustomEvent<PostNameUpdatedDetail>).detail
-  ws.send('crew', 'UpdatePostName', detail).catch((err) => dispatchError((err as Error).message))
+  sendCommand('crew', 'UpdatePostName', detail).catch((err) => dispatchError((err as Error).message))
 })
 
 document.addEventListener('post-edit-name-requested', (e) => {
@@ -280,18 +306,21 @@ document.addEventListener('post-edit-name-requested', (e) => {
 })
 
 document.addEventListener('post-delete-requested', (e) => {
+  if (!sendCommand) return
   const detail = (e as CustomEvent<PostDeleteRequestedDetail>).detail
-  ws.send('crew', 'DeletePost', { postId: detail.postId }).catch((err) => dispatchError((err as Error).message))
+  sendCommand('crew', 'DeletePost', { postId: detail.postId }).catch((err) => dispatchError((err as Error).message))
 })
 
 document.addEventListener('slot-added', (e) => {
+  if (!sendCommand) return
   const detail = (e as CustomEvent<SlotAddedDetail>).detail
-  ws.send('crew', 'AddSlotToPost', detail).catch((err) => dispatchError((err as Error).message))
+  sendCommand('crew', 'AddSlotToPost', detail).catch((err) => dispatchError((err as Error).message))
 })
 
 document.addEventListener('slot-updated', (e) => {
+  if (!sendCommand) return
   const detail = (e as CustomEvent<SlotUpdatedDetail>).detail
-  ws.send('crew', 'UpdateSlotInPost', detail).catch((err) => dispatchError((err as Error).message))
+  sendCommand('crew', 'UpdateSlotInPost', detail).catch((err) => dispatchError((err as Error).message))
 })
 
 document.addEventListener('slot-edit-requested', (e) => {
@@ -299,8 +328,9 @@ document.addEventListener('slot-edit-requested', (e) => {
 })
 
 document.addEventListener('slot-delete-requested', (e) => {
+  if (!sendCommand) return
   const detail = (e as CustomEvent<SlotDeleteRequestedDetail>).detail
-  ws.send('crew', 'RemoveSlotFromPost', { postId: detail.postId, slotId: detail.slotId }).catch((err) => dispatchError((err as Error).message))
+  sendCommand('crew', 'RemoveSlotFromPost', { postId: detail.postId, slotId: detail.slotId }).catch((err) => dispatchError((err as Error).message))
 })
 
 document.addEventListener('assign-slot-requested', (e) => {
@@ -308,13 +338,15 @@ document.addEventListener('assign-slot-requested', (e) => {
 })
 
 document.addEventListener('volunteer-assigned', (e) => {
+  if (!sendCommand) return
   const detail = (e as CustomEvent<VolunteerAssignedDetail>).detail
-  ws.send('crew', 'AssignVolunteer', detail).catch((err) => dispatchError((err as Error).message))
+  sendCommand('crew', 'AssignVolunteer', detail).catch((err) => dispatchError((err as Error).message))
 })
 
 document.addEventListener('assignment-delete-requested', (e) => {
+  if (!sendCommand) return
   const detail = (e as CustomEvent<AssignmentDeleteRequestedDetail>).detail
-  ws.send('crew', 'UnassignVolunteer', { assignmentId: detail.assignmentId }).catch((err) => dispatchError((err as Error).message))
+  sendCommand('crew', 'UnassignVolunteer', { assignmentId: detail.assignmentId }).catch((err) => dispatchError((err as Error).message))
 })
 
 document.addEventListener('slots-copy-requested', (e) => {
@@ -323,8 +355,9 @@ document.addEventListener('slots-copy-requested', (e) => {
 })
 
 document.addEventListener('slots-copied', (e) => {
+  if (!sendCommand) return
   const detail = (e as CustomEvent<SlotsCopiedDetail>).detail
-  ws.send('crew', 'CopySlotsToPost', { sourcePostId: detail.sourcePostId, targetPostId: detail.targetPostId }).catch((err) => dispatchError((err as Error).message))
+  sendCommand('crew', 'CopySlotsToPost', { sourcePostId: detail.sourcePostId, targetPostId: detail.targetPostId }).catch((err) => dispatchError((err as Error).message))
 })
 
 document.addEventListener('crew-error', (e) => {

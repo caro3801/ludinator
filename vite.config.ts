@@ -28,6 +28,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: resolve(__dirname, 'index.html'),
+        update: resolve(__dirname, 'update.html'),
         fest: resolve(__dirname, 'fest.html'),
         mioum: resolve(__dirname, 'mioum.html'),
         admin: resolve(__dirname, 'admin.html'),
