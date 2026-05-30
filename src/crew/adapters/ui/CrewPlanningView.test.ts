@@ -340,6 +340,37 @@ describe('CrewPlanningView', () => {
       const content = el.querySelector<HTMLElement>('.planning-content')?.textContent
       expect(content).toContain('Bob')
     })
+
+    it('shows available volunteers sorted alphabetically', async () => {
+      const bar = Post.create('Bar', 2)
+      const barSlot = bar.addSlot(new TimeWindow('saturday', '14:00', '16:00'))
+      const charlie = Volunteer.create('Charlie')
+      const bob = Volunteer.create('Bob')
+      const eve = Volunteer.create('Eve')
+
+      await el.refresh(
+        makeRepos({ schedule, volunteers: [alice, bob, charlie, eve], posts: [accueil, bar] }),
+        'edition-2024'
+      )
+      el.querySelector<HTMLButtonElement>('button[data-filter="understaffed"]')?.click()
+
+      const availableBtn = el.querySelector<HTMLButtonElement>('button[data-filter="available-volunteers"]')
+      expect(availableBtn).not.toBeNull()
+      availableBtn?.click()
+
+      // Available volunteers should be sorted alphabetically: Bob, Charlie, Eve
+      const content = el.querySelector<HTMLElement>('.planning-content')?.textContent
+      expect(content).toContain('Disponibles:')
+      // Check that Bob appears before Charlie, and Charlie before Eve
+      const bobIndex = content?.indexOf('Bob') ?? -1
+      const charlieIndex = content?.indexOf('Charlie') ?? -1
+      const eveIndex = content?.indexOf('Eve') ?? -1
+      expect(bobIndex).toBeGreaterThan(-1)
+      expect(charlieIndex).toBeGreaterThan(-1)
+      expect(eveIndex).toBeGreaterThan(-1)
+      expect(bobIndex).toBeLessThan(charlieIndex)
+      expect(charlieIndex).toBeLessThan(eveIndex)
+    })
   })
 
   describe('"+" button per slot', () => {

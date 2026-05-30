@@ -268,7 +268,9 @@ export class CrewPlanningView extends HTMLElement {
         
         // Get available volunteers for this slot (not assigned to same time on any post)
         const availableVolunteers = this.#showAvailableVolunteers && !staffed 
-          ? this.#getAvailableVolunteersForSlot(slot.id).map(v => v.name.value)
+          ? this.#getAvailableVolunteersForSlot(slot.id)
+              .sort((a, b) => a.name.value.localeCompare(b.name.value))
+              .map(v => v.name.value)
           : []
         
         days[day][post.name.value].push({
