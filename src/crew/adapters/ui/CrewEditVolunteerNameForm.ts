@@ -58,8 +58,11 @@ export class CrewEditVolunteerNameForm extends HTMLElement {
     
     const name = nameInput.value.trim()
     try {
-      const volunteer = await this.#useCase.execute({ volunteerId: this.#volunteerId, name })
-      this.dispatchEvent(new CustomEvent<Volunteer>('volunteer-name-updated', { detail: volunteer, bubbles: true }))
+      await this.#useCase.execute({ volunteerId: this.#volunteerId, name })
+      this.dispatchEvent(new CustomEvent('volunteer-name-updated', {
+        detail: { volunteerId: this.#volunteerId, name },
+        bubbles: true
+      }))
       this.hidden = true
     } catch (err) {
       const error = err as Error

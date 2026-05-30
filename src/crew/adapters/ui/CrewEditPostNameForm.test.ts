@@ -43,16 +43,15 @@ describe('CrewEditPostNameForm', () => {
   })
 
   it('dispatches post-name-updated and hides itself on success', async () => {
-    const post: Post = { id: 'p-1', name: { value: 'Entrée' } }
-    el.updatePostNameUseCase = makeUseCase(post)
+    el.updatePostNameUseCase = makeUseCase({ id: 'p-1', name: { value: 'Entrée' } })
     el.open({ postId: 'p-1', name: 'Accueil' })
 
-    const events: Post[] = []
-    el.addEventListener('post-name-updated', (e: Event) => events.push((e as CustomEvent<Post>).detail))
+    const events: { postId: string; name: string }[] = []
+    el.addEventListener('post-name-updated', (e: Event) => events.push((e as CustomEvent<{ postId: string; name: string }>).detail))
     el.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit'))
 
     await vi.waitFor(() => {
-      expect(events[0]).toBe(post)
+      expect(events[0]).toEqual({ postId: 'p-1', name: 'Accueil' })
       expect(el.hidden).toBe(true)
     })
   })

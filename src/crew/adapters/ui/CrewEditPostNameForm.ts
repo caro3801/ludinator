@@ -55,8 +55,11 @@ export class CrewEditPostNameForm extends HTMLElement {
     
     const name = nameInput.value.trim()
     try {
-      const post = await this.#useCase.execute({ postId: this.#postId, name })
-      this.dispatchEvent(new CustomEvent<Post>('post-name-updated', { detail: post, bubbles: true }))
+      await this.#useCase.execute({ postId: this.#postId, name })
+      this.dispatchEvent(new CustomEvent('post-name-updated', {
+        detail: { postId: this.#postId, name },
+        bubbles: true
+      }))
       this.#close()
     } catch (err) {
       const error = err as Error

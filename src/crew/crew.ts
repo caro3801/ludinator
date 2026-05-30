@@ -4,8 +4,10 @@ import { Schedule } from './domain/model/Schedule'
 import { VolunteerCreated, PostCreated } from './domain/events'
 import { CreateVolunteer } from './application/usecases/CreateVolunteer'
 import { UpdateVolunteerName } from './application/usecases/UpdateVolunteerName'
+import { UpdateVolunteerNameById } from './application/usecases/UpdateVolunteerNameById'
 import { CreatePost } from './application/usecases/CreatePost'
 import { UpdatePostName } from './application/usecases/UpdatePostName'
+import { UpdatePostNameById } from './application/usecases/UpdatePostNameById'
 import { AddSlotToPost } from './application/usecases/AddSlotToPost'
 import { UpdateSlotInPost } from './application/usecases/UpdateSlotInPost'
 import { AssignVolunteer } from './application/usecases/AssignVolunteer'
@@ -95,6 +97,12 @@ let volunteerRepo: VolunteerRepository = {
   findAll: async () => [],
   delete: async () => {}
 }
+let postRepo: PostRepository = {
+  save: async () => {},
+  findById: async () => null,
+  findAll: async () => [],
+  delete: async () => {}
+}
 
 // Configure use cases - skip in read-only mode
 if (!IS_READONLY) {
@@ -103,9 +111,11 @@ if (!IS_READONLY) {
   }
 
   if (editVolunteerNameForm) {
+    const updateVolunteerNameById = new UpdateVolunteerNameById(volunteerRepo)
     editVolunteerNameForm.updateVolunteerNameUseCase = {
-      execute: async ({ volunteerId, name }: { volunteerId: string; name: string }) => {
-        return { id: volunteerId, name: { value: name } }
+      execute: async (params: { volunteerId: string; name: string }) => {
+        await updateVolunteerNameById.execute(params)
+        return { id: params.volunteerId, name: { value: params.name } }
       },
     }
   }
@@ -115,9 +125,11 @@ if (!IS_READONLY) {
   }
 
   if (editPostNameForm) {
+    const updatePostNameById = new UpdatePostNameById(postRepo)
     editPostNameForm.updatePostNameUseCase = {
-      execute: async ({ postId, name }: { postId: string; name: string }) => {
-        return { id: postId, name: { value: name } }
+      execute: async (params: { postId: string; name: string }) => {
+        await updatePostNameById.execute(params)
+        return { id: params.postId, name: { value: params.name } }
       },
     }
   }
@@ -207,12 +219,32 @@ ws.onState('crew', (data: unknown) => {
   const domainSchedule = schedule ? Schedule.fromJSON(schedule as { id: string; editionId: string; assignments: unknown[] }) : null
 
   volunteerRepo = new InMemoryVolunteerRepo(domainVolunteers)
-  const postRepo = new InMemoryPostRepo(domainPosts)
+  postRepo = new InMemoryPostRepo(domainPosts)
   const scheduleRepo = new InMemoryScheduleRepo(domainSchedule)
 
-  // Recreate use case with updated repository - skip in read-only mode
-  if (!IS_READONLY && volunteerForm) {
-    volunteerForm.createVolunteerUseCase = new CreateVolunteer(volunteerRepo)
+  // Recreate use cases with updated repositories - skip in read-only mode
+  if (!IS_READONLY) {
+    if (volunteerForm) {
+      volunteerForm.createVolunteerUseCase = new CreateVolunteer(volunteerRepo)
+    }
+    if (editVolunteerNameForm) {
+      const updateVolunteerNameById = new UpdateVolunteerNameById(volunteerRepo)
+      editVolunteerNameForm.updateVolunteerNameUseCase = {
+        execute: async (params: { volunteerId: string; name: string }) => {
+          const event = await updateVolunteerNameById.execute(params)
+          return { id: event.payload.id, name: { value: event.payload.name } }
+        },
+      }
+    }
+    if (editPostNameForm) {
+      const updatePostNameById = new UpdatePostNameById(postRepo)
+      editPostNameForm.updatePostNameUseCase = {
+        execute: async (params: { postId: string; name: string }) => {
+          const event = await updatePostNameById.execute(params)
+          return { id: event.payload.id, name: { value: event.payload.name } }
+        },
+      }
+    }
   }
 
   if (volunteerList) {
