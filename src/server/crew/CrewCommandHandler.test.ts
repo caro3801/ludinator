@@ -82,9 +82,9 @@ describe('CrewCommandHandler', () => {
 
   it('CopySlotsToPost throws when target post not found', async () => {
     const sourcePost = await handler.execute('CreatePost', { name: 'Foo', minVolunteers: 1 })
-    store.append(sourcePost)
+    store.append({ ...sourcePost, id: '1', occurredAt: new Date().toISOString() })
     
-    const sourcePostId = sourcePost.payload.id
+    const sourcePostId = (sourcePost.payload as { id: string }).id
     await expect(handler.execute('CopySlotsToPost', { sourcePostId, targetPostId: 'x' }))
       .rejects.toThrow('Target post not found')
   })
