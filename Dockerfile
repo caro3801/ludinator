@@ -18,7 +18,7 @@ RUN bun install
 COPY src/ ./src/
 COPY tsconfig.json tsconfig.node.json ./
 COPY vite.config.ts ./
-COPY index.html fest.html mioum.html admin.html favicon.svg ./
+COPY index.html update.html fest.html mioum.html admin.html favicon.svg ./
 
 # Build frontend as root (Vite creates temp files)
 RUN bun run build
