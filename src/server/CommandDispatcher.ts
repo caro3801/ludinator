@@ -1,4 +1,3 @@
-import { generateId } from '../shared/generateId'
 import { EventStore } from './EventStore'
 import { MioumCommandHandler } from './mioum/MioumCommandHandler'
 import { MioumProjection } from './mioum/MioumProjection'
@@ -80,7 +79,8 @@ export class CommandDispatcher {
     }
     try {
       const domainEvent = await handler.execute(command.action, command.payload)
-      this.#store.append({ ...domainEvent, id: generateId() })
+      // Use command.id as event id for idempotency - same command won't create duplicate events
+      this.#store.append({ ...domainEvent, id: command.id })
       ws.send(JSON.stringify({ id: command.id, ok: true }))
       const state = this.#projections[module].rebuild()
       const msg = JSON.stringify({ type: 'state', module, data: state })

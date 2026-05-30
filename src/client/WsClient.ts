@@ -8,6 +8,8 @@ interface QueueCommand {
   module: string
   action: string
   payload: unknown
+  timestamp: number
+  retries: number
 }
 
 interface StateMessage {
@@ -40,6 +42,7 @@ function saveQueue(queue: QueueCommand[]): void {
 /**
  * WebSocket client with offline queue support
  * Automatically reconnects and queues commands when offline
+ * Commands are persisted to localStorage and retried on reconnection
  */
 export class WsClient {
   readonly #url: string
@@ -52,6 +55,7 @@ export class WsClient {
   #retryDelay: number = 1000
   #connectionPromise: Promise<void> | null = null
   #connectionResolve: (() => void) | null = null
+  #sending: Set<EventId> = new Set()
 
   constructor(url: string) {
     this.#url = url
@@ -66,6 +70,7 @@ export class WsClient {
 
     this.#ws.onopen = () => {
       this.#connected = true
+      this.#retryDelay = 1000
       this.#notifyConnection()
       this.#connectionResolve?.()
       this.#connectionResolve = null
@@ -96,6 +101,9 @@ export class WsClient {
       }
       if ('id' in msg) {
         const ackMsg = msg as AckMessage
+        this.#sending.delete(ackMsg.id)
+        this.#removeFromQueue(ackMsg.id)
+        this.#notifyConnection()
         
         // Gérer les ACK standard (ok/error)
         const ackCallbacks = this.#pendingAcks.get(ackMsg.id)
@@ -135,37 +143,78 @@ export class WsClient {
     }
   }
 
-  async #flushQueue(): Promise<void> {
-    this.#retryDelay = 1000
+  #removeFromQueue(id: EventId): void {
     const queue = loadQueue()
-    for (const cmd of queue) {
-      try {
-        await this.#sendNow(cmd)
-        const remaining = loadQueue().filter(c => c.id !== cmd.id)
-        saveQueue(remaining)
-        this.#notifyConnection()
-      } catch {
-        const remaining = loadQueue().filter(c => c.id !== cmd.id)
-        saveQueue(remaining)
-        this.#notifyConnection()
-      }
-    }
+    const updated = queue.filter(c => c.id !== id)
+    saveQueue(updated)
   }
 
-  #sendNow(cmd: QueueCommand): Promise<unknown> {
+  #incrementRetry(id: EventId): void {
+    const queue = loadQueue()
+    const updated = queue.map(c => c.id === id ? { ...c, retries: c.retries + 1 } : c)
+    saveQueue(updated)
+  }
+
+  async #sendNow(cmd: QueueCommand): Promise<unknown> {
     return new Promise((resolve, reject) => {
       this.#pendingResponses.set(cmd.id, { resolve, reject })
-      if (this.#ws) {
+      this.#sending.add(cmd.id)
+      if (this.#ws && this.#ws.readyState === WebSocket.OPEN) {
         this.#ws.send(JSON.stringify(cmd))
+      } else {
+        reject(new Error('WebSocket not connected'))
       }
     })
   }
 
-  async send(module: string, action: string, payload: unknown = {}): Promise<unknown> {
-    if (!this.#connected) {
-      await this.#connectionPromise
+  async #flushQueue(): Promise<void> {
+    const queue = loadQueue()
+    if (queue.length === 0) return
+
+    for (const cmd of queue) {
+      if (this.#sending.has(cmd.id)) continue
+        
+      try {
+        this.#sending.add(cmd.id)
+        await this.#sendNow(cmd)
+      } catch {
+        this.#sending.delete(cmd.id)
+        this.#incrementRetry(cmd.id)
+        this.#notifyConnection()
+      }
     }
-    const cmd: QueueCommand = { id: generateId(), module, action, payload }
+  }
+
+  async send(module: string, action: string, payload: unknown = {}): Promise<unknown> {
+    const cmd: QueueCommand = { 
+      id: generateId(), 
+      module, 
+      action, 
+      payload,
+      timestamp: Date.now(),
+      retries: 0
+    }
+    
+    // Always queue the command for persistence
+    const queue = loadQueue()
+    queue.push(cmd)
+    saveQueue(queue)
+    this.#notifyConnection()
+    
+    // If connected, send immediately
+    if (this.#connected) {
+      try {
+        return await this.#sendNow(cmd)
+      } catch {
+        // Will be retried in flushQueue
+        return new Promise((resolve, reject) => {
+          this.#pendingResponses.set(cmd.id, { resolve, reject })
+        })
+      }
+    }
+    
+    // If not connected, wait for connection and then flush
+    await this.#connectionPromise
     return this.#sendNow(cmd)
   }
 

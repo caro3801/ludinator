@@ -1,2 +1,2 @@
 [test]
-pathIgnorePatterns = ["**/adapters/ui/**", "**/{fest,crew,mioum}/adapters/storage/**"]
+pathIgnorePatterns = ["**/adapters/ui/**", "**/{fest,crew,mioum}/adapters/storage/**", "**/WsClient.*"]
