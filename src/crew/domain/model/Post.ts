@@ -4,6 +4,7 @@ import { TimeWindow } from './TimeWindow'
 import { ValidationError } from '../errors/ValidationError'
 import { generateId } from '../../../shared/generateId'
 import { PostId, SlotId } from '../../../shared/types'
+import { compareSlotsByDay } from '../utils/dayOrder'
 
 export class Post {
   #id: PostId
@@ -22,10 +23,7 @@ export class Post {
   get name(): PostName { return this.#name }
   get minVolunteers(): number { return this.#minVolunteers }
   get slots(): TimeSlot[] {
-    return [...this.#slots].sort((a, b) =>
-      a.window.day.localeCompare(b.window.day) ||
-      a.window.startTime.localeCompare(b.window.startTime)
-    )
+    return [...this.#slots].sort(compareSlotsByDay)
   }
 
   updateName(rawName: string): void {

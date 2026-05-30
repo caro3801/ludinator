@@ -5,6 +5,7 @@ import { ScheduleRepository } from '../../ports/ScheduleRepository'
 import { VolunteerRepository } from '../../ports/VolunteerRepository'
 import { PostRepository } from '../../ports/PostRepository'
 import { EditionId, SlotId, PostId, VolunteerId } from '../../../shared/types'
+import { compareDays, compareSlotsByDay } from '../../domain/utils/dayOrder'
 
 export class CrewPlanningView extends HTMLElement {
   #mode: 'post' | 'volunteer' = 'post'
@@ -143,7 +144,7 @@ export class CrewPlanningView extends HTMLElement {
     for (const post of this.#posts) {
       for (const slot of post.slots) days.add(slot.window.day)
     }
-    return [...days].sort()
+    return [...days].sort(compareDays)
   }
 
   #render(): void {
@@ -285,7 +286,7 @@ export class CrewPlanningView extends HTMLElement {
 
     if (!Object.keys(days).length) return '<p class="text-muted">Aucune affectation pour ce filtre.</p>'
 
-    return Object.entries(days).sort(([a], [b]) => a.localeCompare(b)).map(([day, postMap]) => `
+    return Object.entries(days).sort(([a], [b]) => compareDays(a, b)).map(([day, postMap]) => `
       <h6 class="text-uppercase text-secondary mt-3">${day}</h6>
       ${Object.entries(postMap).map(([postName, slots]) => `
         <div class="mb-2">
@@ -315,10 +316,7 @@ export class CrewPlanningView extends HTMLElement {
         .map(a => ({ assignmentId: a.id, slotId: a.slotId, ...this.#slotMap[a.slotId] }))
         .filter((s): s is typeof s & { window: { day: string, startTime: string, endTime: string } } => 
           s.window !== undefined && (this.#day === 'all' || s.window.day === this.#day))
-        .sort((a, b) =>
-          a.window.day.localeCompare(b.window.day) ||
-          a.window.startTime.localeCompare(b.window.startTime)
-        )
+        .sort(compareSlotsByDay)
 
       return `
         <div class="mb-3">

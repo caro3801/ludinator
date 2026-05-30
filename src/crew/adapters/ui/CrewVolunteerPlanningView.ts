@@ -5,6 +5,7 @@ import { Schedule } from '../../domain/model/Schedule'
 import { Volunteer } from '../../domain/model/Volunteer'
 import { Post } from '../../domain/model/Post'
 import { EditionId, SlotId } from '../../../shared/types'
+import { compareSlotsByDay } from '../../domain/utils/dayOrder'
 
 interface SlotInfo {
   postName: string
@@ -41,10 +42,7 @@ export class CrewVolunteerPlanningView extends HTMLElement {
       const slots = assignments
         .map(a => slotMap[a.slotId])
         .filter((s): s is SlotInfo => s !== undefined)
-        .sort((a, b) =>
-          a.window.day.localeCompare(b.window.day) ||
-          a.window.startTime.localeCompare(b.window.startTime)
-        )
+        .sort(compareSlotsByDay)
 
       return `
         <div class="mb-3">

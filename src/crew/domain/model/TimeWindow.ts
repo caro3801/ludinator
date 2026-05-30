@@ -9,7 +9,7 @@ export class TimeWindow {
     if (startTime >= endTime) {
       throw new ValidationError('startTime must be before endTime')
     }
-    this.#day = day
+    this.#day = day.toLowerCase()
     this.#startTime = startTime
     this.#endTime = endTime
   }
