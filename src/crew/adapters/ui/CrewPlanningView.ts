@@ -10,6 +10,7 @@ export class CrewPlanningView extends HTMLElement {
   #mode: 'post' | 'volunteer' = 'post'
   #day: string = 'all'
   #onlyUnderstaffed: boolean = false
+  #selectedVolunteer: VolunteerId | null = null
   #schedule: Schedule | null = null
   #volunteers: Volunteer[] = []
   #posts: Post[] = []
@@ -30,6 +31,12 @@ export class CrewPlanningView extends HTMLElement {
       const filterBtn = target.closest<HTMLElement>('button[data-filter="understaffed"]')
       if (filterBtn) {
         this.#onlyUnderstaffed = !this.#onlyUnderstaffed
+        this.#updateContent()
+        return
+      }
+      const volunteerSelect = target.closest<HTMLSelectElement>('select[data-filter="volunteer"]')
+      if (volunteerSelect) {
+        this.#selectedVolunteer = volunteerSelect.value ? volunteerSelect.value as VolunteerId : null
         this.#updateContent()
         return
       }
@@ -105,6 +112,18 @@ export class CrewPlanningView extends HTMLElement {
       : `<span>${name}</span>`
   }
 
+  #renderVolunteerSelect(): string {
+    const options = this.#volunteers.map(v => 
+      `<option value="${v.id}" ${this.#selectedVolunteer === v.id ? 'selected' : ''}>${v.name.value}</option>`
+    ).join('')
+    return `
+      <select class="form-select form-select-sm" style="width: auto; display: inline-block;" data-filter="volunteer">
+        <option value="">-- Tous les bénévoles --</option>
+        ${options}
+      </select>
+    `
+  }
+
   #days(): string[] {
     const days = new Set<string>()
     for (const post of this.#posts) {
@@ -129,6 +148,7 @@ export class CrewPlanningView extends HTMLElement {
             `).join('')}
           </div>` : ''}
         <button class="btn btn-sm btn-outline-warning ${this.#onlyUnderstaffed ? 'active' : ''}" data-filter="understaffed">⚠ Incomplets seulement</button>
+        ${this.#mode === 'volunteer' ? this.#renderVolunteerSelect() : ''}
       </div>
       <div class="planning-content">${this.#renderContent()}</div>
     `
@@ -143,6 +163,10 @@ export class CrewPlanningView extends HTMLElement {
     })
     const understaffedBtn = this.querySelector<HTMLElement>('button[data-filter="understaffed"]')
     if (understaffedBtn) understaffedBtn.classList.toggle('active', this.#onlyUnderstaffed)
+    const volunteerSelect = this.querySelector<HTMLSelectElement>('select[data-filter="volunteer"]')
+    if (volunteerSelect) {
+      volunteerSelect.value = this.#selectedVolunteer ?? ''
+    }
     const content = this.querySelector<HTMLElement>('.planning-content')
     if (content) content.innerHTML = this.#renderContent()
   }
@@ -199,7 +223,11 @@ export class CrewPlanningView extends HTMLElement {
   }
 
   #renderByVolunteer(): string {
-    return this.#volunteers.map(volunteer => {
+    const volunteersToShow = this.#selectedVolunteer
+      ? this.#volunteers.filter(v => v.id === this.#selectedVolunteer)
+      : this.#volunteers
+    
+    return volunteersToShow.map(volunteer => {
       const assignments = this.#schedule!.getAssignmentsForVolunteer(volunteer.id)
       const slots = assignments
         .map(a => ({ assignmentId: a.id, slotId: a.slotId, ...this.#slotMap[a.slotId] }))
